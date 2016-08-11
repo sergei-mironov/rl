@@ -1,0 +1,59 @@
+name:                rl
+version:             0.1.0.0
+author:              Sergey Mironov
+maintainer:          grrwlf@gmail.com
+category:            Math
+build-type:          Simple
+cabal-version:       >=1.10
+
+library
+  default-language: Haskell2010
+  hs-source-dirs:   src
+  exposed-modules:
+    RL.DP,
+    RL.MC,
+    RL.MC.ES,
+    RL.MC.Types,
+    RL.Q,
+    RL.Imports,
+    RL.Types,
+    Graphics.TinyPlot
+    Control.Monad.Rnd
+
+  default-extensions:
+    LambdaCase,
+    NondecreasingIndentation,
+    Rank2Types,
+    ViewPatterns,
+    ScopedTypeVariables,
+    FlexibleInstances,
+    FlexibleContexts,
+    DataKinds,
+    RecordWildCards,
+    MultiParamTypeClasses,
+    FunctionalDependencies,
+    TemplateHaskell,
+    QuasiQuotes,
+    KindSignatures
+
+  build-depends:
+    base >=4.8 && <4.9,
+    containers,
+    mtl,
+    MonadRandom,
+    break,
+    lens,
+    random,
+    heredocs,
+    process,
+    filepath,
+    mersenne-random-pure64,
+    stm,
+    pretty-show,
+    time,
+    directory,
+    text,
+    hashable,
+    binary,
+    deepseq
+
