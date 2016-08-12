@@ -73,6 +73,17 @@ showGenericPolicy pr@(GW (sx,sy) _) p@GenericPolicy{..} = liftIO $ do
     printf "\n"
 
 
+-- FIXME: remove recursion
+arbitrary_state :: MonadRnd g m => GW t -> m (Int, Int)
+arbitrary_state gw@GW{..} = do
+    let (sx,sy) = gw_size
+    x <- getRndR (0,sx-1)
+    y <- getRndR (0,sy-1)
+    case (x,y) `member` gw_exits of
+      True -> arbitrary_state gw
+      False -> return (x,y)
+
+
 transition :: GW num -> Point -> Action -> ((Int, Int), Bool)
 transition (GW (sx,sy) exits) (x,y) a =
   let
