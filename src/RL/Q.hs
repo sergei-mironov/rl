@@ -90,9 +90,7 @@ q_action :: (Eq sr, Hashable sr,
   => pr -> s -> Q_Policy -> Q sr a -> m (a, Bool)
 q_action pr s p q =
   let
-    -- g = s^.s_game
-    -- hid = s^.s_hid
-    -- h = g^.gameHeroes.(idx hid)
+    {- Reduced 'table' state -}
     t = q_state_reduce pr s
 
     {- Stored actions -}

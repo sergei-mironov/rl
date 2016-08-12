@@ -30,23 +30,7 @@ instance (Fractional num, Real num, Ord num) => MC_Problem num GW (Int,Int) Acti
 
   mc_actions pr s = Set.fromList [minBound .. maxBound]
 
-  mc_transition (GW (sx,sy) exits) (x,y) a g =
-    let
-      check (x',y') =
-        if x' >= 0 && x' < sx && y' >= 0 && y' < sy then
-          (x',y')
-        else
-          (x,y)
-      (_::Integer, g') = random g
-
-      p' = case a of
-                 L -> check (x-1,y)
-                 R -> check (x+1,y)
-                 U -> check (x,y-1)
-                 D -> check (x,y+1)
-      term = p' `member` exits
-    in
-    ((p',term), g')
+  mc_transition gw s a g = (transition gw s a, g)
 
   mc_reward (GW (sx,sy) _) s a s' = -1
 
@@ -56,6 +40,7 @@ instance (Fractional num, Real num, Ord num) => MC_Policy num GW (Int,Int) Actio
 
 
 instance (Fractional num, Real num, Ord num, Show num) => MC_Policy_Show num GW (Int,Int) Action GWRandomPolicy
+
 instance (Fractional num, Real num, Ord num, Show num) => MC_Problem_Show num GW (Int,Int) Action
 
 

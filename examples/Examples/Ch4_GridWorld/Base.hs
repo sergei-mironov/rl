@@ -72,3 +72,23 @@ showGenericPolicy pr@(GW (sx,sy) _) p@GenericPolicy{..} = liftIO $ do
           printf "% 4s " (showActions acts)
     printf "\n"
 
+
+transition :: GW num -> Point -> Action -> ((Int, Int), Bool)
+transition (GW (sx,sy) exits) (x,y) a =
+  let
+    check (x',y') =
+      if x' >= 0 && x' < sx && y' >= 0 && y' < sy then
+        (x',y')
+      else
+        (x,y)
+
+    p' = case a of
+               L -> check (x-1,y)
+               R -> check (x+1,y)
+               U -> check (x,y-1)
+               D -> check (x,y+1)
+    term = p' `member` exits
+  in
+  (p',term)
+
+
