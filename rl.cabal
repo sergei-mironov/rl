@@ -43,7 +43,9 @@ library
     containers,
     mtl,
     MonadRandom,
+    -- deprecate
     break,
+    monad-loops,
     lens,
     random,
     heredocs,

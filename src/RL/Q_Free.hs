@@ -7,6 +7,7 @@ import qualified Data.HashMap.Binary as HashMap
 import qualified Data.HashSet as HashSet
 import qualified Control.Lens as Lens
 import Control.Monad.Rnd as Rnd
+import Control.Monad.Loops
 import Control.Monad.Free
 import Control.Monad.Free.TH (makeFree)
 import Prelude hiding (break)
@@ -14,12 +15,6 @@ import Prelude hiding (break)
 import RL.Imports
 
 type Q_Number = Double
-
-data Q_Policy = Q_Policy {
-    _p_eps :: Q_Number
-  } deriving(Show,Read)
-
-$(makeLenses ''Q_Policy)
 
 data Q s a = Q {
     _q_map :: ! (HashMap s (HashMap a Q_Number))
@@ -39,91 +34,74 @@ zidx def name = Lens.lens get set where
             Nothing -> def
   set = (\hs mhv -> HashMap.insert name mhv hs)
 
-newtype FinalState = FinalState Bool
-  deriving(Show, Eq)
+class (Enum a, Bounded a, Eq a) => Q_Action a where
+  q_mark_best :: Bool -> a -> a
 
-newtype Reward = Reward Q_Number
+class (Eq s) => Q_State s where
+  q_is_final :: s -> Bool
+
+class (Q_Action a, Q_State s) => Q_Problem s a where
+  q_reward :: s -> a -> s -> Q_Number
 
 data Q_AlgF s a next =
     InitialState (s -> next)
-  | Transition s (a,Bool) ((s,FinalState,Reward) -> next)
-  | QueryQ s (HashMap a Q_Number -> next)
+  | Transition s a (s -> next)
+  | Get_Actions s ([(a,Q_Number)] -> next)
+  | Modify_Q s a (Q_Number -> Q_Number) next
   | Fin
   deriving(Functor)
 
+-- Defines `initialState`, `transition`, etc.
 makeFree ''Q_AlgF
 
 type Q_Alg s a = Free (Q_AlgF s a)
 
-data Q_State s sr a = Q_State {
-    _s_q :: Q sr a
-  -- ^ Q-table
-  , _s_s :: s
-  -- ^ Final state
-  }
-
-$(makeLenses ''Q_State)
-
 data Q_Opts = Q_Opts {
-    _q_alpha :: Q_Number
-  , _q_gamma :: Q_Number
-  , _q_eps :: Q_Number
+    o_alpha :: Q_Number
+  , o_gamma :: Q_Number
+  , o_eps :: Q_Number
 } deriving (Show)
 
 defaultOpts = Q_Opts {
-    _q_alpha = 0.1
-  , _q_gamma = 0.5
-  , _q_eps = 0.3
+    o_alpha = 0.1
+  , o_gamma = 0.5
+  , o_eps = 0.3
   }
 
-$(makeLenses ''Q_Opts)
+-- | Take eps-greedy action
+qaction :: (MonadRnd g m, MonadFree (Q_AlgF s a) m, Q_Problem s a) => Q_Number -> s -> m a
+qaction eps s = do
 
+  qs <- get_Actions s
 
-class (Enum a, Bounded a, Eq a, Hashable a, Eq s, Hashable s) => Q_Problem s a
-
-
-qaction :: (MonadRnd g m, Q_Problem s a) => Q_Opts -> Q s a -> s -> m (a,Bool)
-qaction o q s =
-  let
-    {- Stored actions -}
-    amap = fromMaybe HashMap.empty $ HashMap.lookup s (q^.q_map)
-
-    {- Map of weighted available actions
-     - Use small positive reward to make the agent more qurious
-     -}
-    qacts =
-      flip map [minBound..maxBound] $ \a ->
-        let q = fromMaybe 0.01 $ HashMap.lookup a amap
-        in (a,q)
-
-    {- Best action -}
-    abest = fst $ maximumBy (compare`on`snd) qacts
-
-    {- Rest available actions -}
-    arest = map fst $ filter (\x -> fst x /= abest) qacts
-
-  in
+  let abest = fst $ maximumBy (compare`on`snd) qs
+  let arest = map fst $ filter (\x -> fst x /= abest) qs
 
   join $ Rnd.fromList [
-    swap (toRational $ 1.0-(o^.q_eps), do
-      return (abest,True)),
-    swap (toRational $ o^.q_eps, do
+    swap (toRational (1.0-eps), do
+      return (q_mark_best True abest)),
+    swap (toRational eps, do
       r <- Rnd.uniform arest
-      return (r,False))
+      return (q_mark_best False r))
     ]
 
-qexec :: (MonadRnd g m, Q_Problem s a, MonadFree (Q_AlgF s a) m) => Q_Opts -> Q s a -> m ()
-qexec o q0 = do
-  s0 <- initialState
-  flip evalStateT (Q_State q0 s0) $ do
-  forever $ do
-    s <- use s_s
-    q <- use s_q
-    ab <- qaction o q s
-    (s', isfin, reward) <- transition s ab
-    when (isfin == FinalState True) $ do
-      fin
+qexec :: (MonadRnd g m, Q_Problem s a, MonadFree (Q_AlgF s a) m) => Q_Opts -> m s
+qexec Q_Opts{..} = do
+  initialState >>= do
+  iterateUntilM (not . q_is_final) $ \s -> do
+    a <- qaction o_eps s
+    s' <- transition s a
+    return s'
 
-
+qlearn :: (MonadRnd g m, Q_Problem s a, MonadFree (Q_AlgF s a) m) => Q_Opts -> m s
+qlearn Q_Opts{..} = do
+  initialState >>= do
+  iterateUntilM (not . q_is_final) $ \s -> do
+    a <- qaction o_eps s
+    s' <- transition s a
+    let r = q_reward s a s
+    max_qs' <- snd . maximumBy (compare`on`snd) <$> get_Actions s'
+    modify_Q s a $ \qs -> qs + o_alpha * (r + o_gamma * max_qs' - qs)
+    return s'
 
 
