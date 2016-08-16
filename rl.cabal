@@ -15,6 +15,7 @@ library
     RL.MC.ES,
     RL.MC.Types,
     RL.Q,
+    RL.Q_Free,
     RL.Imports,
     RL.Types,
     Graphics.TinyPlot

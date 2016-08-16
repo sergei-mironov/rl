@@ -8,6 +8,8 @@ module Control.Monad.Rnd where
 
 import Control.Monad.Identity
 import Control.Monad.State.Strict
+import Control.Monad.Free
+import Control.Monad.Trans.Free
 import Control.Break
 import System.Random
 -- import Imports
@@ -55,6 +57,10 @@ instance (MonadRnd g m) => MonadRnd g (Break r m) where
   putGen = lift . putGen
   roll = lift . roll
 
+instance (Functor f, MonadRnd g m) => MonadRnd g (FreeT f m) where
+  getGen = lift getGen
+  putGen = lift . putGen
+  roll = lift . roll
 
 
 -- | Extracted from MonadRandom AS-IS
