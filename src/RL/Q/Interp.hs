@@ -8,6 +8,7 @@ import qualified Data.HashSet as HashSet
 import qualified Control.Lens as Lens
 
 import Control.Monad.Trans.Free.Church
+import Control.Monad.Trans.Free as FreeT
 
 import RL.Imports
 import RL.Q_Free
@@ -30,14 +31,14 @@ emptyQ = HashMap.empty
 
 type Q_AlgT s a m = FT (Q_AlgF s a) m
 
-qexec' :: (MonadRnd g (Q_AlgT s a m), Q_Problem s a) => Q_Opts -> (Q_AlgT s a) m s
-qexec' = qexec
+-- qexec' :: (MonadRnd g (Q_AlgT s a m), Q_Problem s a) => Q_Opts -> (Q_AlgT s a) m s
+-- qexec' = qexec
 
-runAlg :: forall g m s a . (MonadRnd g m, Q_Problem s a) => s -> Q_AlgT s a m s -> m s
-runAlg s0 f = iterT go f where
-  go :: Q_AlgF s a (m x) -> m x
+-- runAlg :: forall g m s a . (MonadRnd g m, Q_Problem s a) => s -> Q_AlgT s a m s -> m s
+runAlg s0 f = FreeT.iterT go (fromFT f) where
+  -- go :: Q_AlgF s a (m x) -> m x
   go (InitialState next) = next s0
 
 
--- test :: (MonadRnd g m, Q_Problem s a) => s -> m s
--- test s0 = runAlg s0 (improveT $ qexec defaultOpts)
+test :: (MonadRnd g m, Q_Problem s a) => s -> m s
+test s0 = runAlg s0 (qexec defaultOpts)

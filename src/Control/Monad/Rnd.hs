@@ -10,6 +10,7 @@ import Control.Monad.Identity
 import Control.Monad.State.Strict
 import Control.Monad.Free
 import Control.Monad.Trans.Free
+import Control.Monad.Trans.Free.Church as Church
 import Control.Break
 import System.Random
 -- import Imports
@@ -62,6 +63,10 @@ instance (Functor f, MonadRnd g m) => MonadRnd g (FreeT f m) where
   putGen = lift . putGen
   roll = lift . roll
 
+instance (Functor f, MonadRnd g m) => MonadRnd g (FT f m) where
+  getGen = lift getGen
+  putGen = lift . putGen
+  roll = lift . roll
 
 -- | Extracted from MonadRandom AS-IS
 -- Sample a random value from a weighted list.  The total weight of all

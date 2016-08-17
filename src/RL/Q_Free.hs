@@ -44,7 +44,7 @@ defaultOpts = Q_Opts {
   }
 
 -- | Take eps-greedy action
-qaction :: (MonadRnd g (t m), Q_Problem s a, MonadFree (Q_AlgF s a) (t m)) => Q_Number -> s -> (t m) a
+qaction :: (MonadRnd g m, Q_Problem s a, MonadFree (Q_AlgF s a) m) => Q_Number -> s -> m a
 qaction eps s = do
 
   qs <- get_Actions s
@@ -60,7 +60,7 @@ qaction eps s = do
       return (q_mark_best False r))
     ]
 
-qexec :: (MonadRnd g (t m), Q_Problem s a, MonadFree (Q_AlgF s a) (t m)) => Q_Opts -> (t m) s
+qexec :: (MonadRnd g m, Q_Problem s a, MonadFree (Q_AlgF s a) m) => Q_Opts -> m s
 qexec Q_Opts{..} = do
   initialState >>= do
   iterateUntilM (not . q_is_final) $ \s -> do
@@ -68,7 +68,7 @@ qexec Q_Opts{..} = do
     s' <- transition s a
     return s'
 
-qlearn :: (MonadRnd g (t m), Q_Problem s a, MonadFree (Q_AlgF s a) (t m)) => Q_Opts -> (t m) s
+qlearn :: (MonadRnd g m, Q_Problem s a, MonadFree (Q_AlgF s a) m) => Q_Opts -> m s
 qlearn Q_Opts{..} = do
   initialState >>= do
   iterateUntilM (not . q_is_final) $ \s -> do
