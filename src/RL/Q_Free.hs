@@ -1,81 +1,60 @@
 {-# LANGUAGE DeriveFunctor, DeriveAnyClass #-}
-module RL.Q_Free where
+module RL.Q_Free (
+    module RL.Q_Free
+  , module RL.Q.Alg
+  ) where
 
-import Control.Monad.Rnd as Rnd
-import Control.Monad.Loops
--- import Control.Monad.Free
-import Control.Monad.Trans.Free
-import Control.Monad.Free.TH (makeFree)
+import qualified Data.List as List
+import qualified Data.HashMap.Strict as HashMap
+import qualified Data.HashMap.Binary as HashMap
+import qualified Data.HashSet as HashSet
+import qualified Control.Lens as Lens
+
+import Control.Monad.Trans.Free.Church
 
 import RL.Imports
+import RL.Q.Alg
 
-type Q_Number = Double
+type Q s a = HashMap s (HashMap a Q_Number)
 
-class (Enum a, Bounded a, Eq a) => Q_Action a where
-  q_mark_best :: Bool -> a -> a
+emptyQ :: Q s a
+emptyQ = HashMap.empty
 
-class (Eq s) => Q_State s where
-  q_is_final :: s -> Bool
+-- q2v :: (Eq s, Hashable s, Eq a, Hashable a) => Q s a -> s -> Q_Number
+-- q2v q s = foldl' max 0 (q^.q_map.(zidx mempty s))
 
-class (Q_Action a, Q_State s) => Q_Problem s a | s -> a where
-  q_reward :: s -> a -> s -> Q_Number
+-- zidx def name = Lens.lens get set where
+--   get m = case HashMap.lookup name m of
+--             Just x -> x
+--             Nothing -> def
+--   set = (\hs mhv -> HashMap.insert name mhv hs)
+-- type Q_Alg s a = Free (Q_AlgF s a)
 
-data Q_AlgF s a next =
-    InitialState (s -> next)
-  | Transition s a (s -> next)
-  | Get_Actions s ([(a,Q_Number)] -> next)
-  | Modify_Q s a (Q_Number -> Q_Number) next
-  | Fin
-  deriving(Functor)
+type Q_AlgT s a m = FT (Q_AlgF s a) m
 
--- Defines `initialState`, `transition`, etc.
-makeFree ''Q_AlgF
+-- qexec' :: (MonadRnd g (Q_AlgT s a m), Q_Problem s a) => Q_Opts -> (Q_AlgT s a) m s
+-- qexec' = qexec
 
-data Q_Opts = Q_Opts {
-    o_alpha :: Q_Number
-  , o_gamma :: Q_Number
-  , o_eps :: Q_Number
-} deriving (Show)
+runAlg :: (MonadRnd g m, Hashable s, Hashable a, Q_Problem s a, MonadState (Q s a) m)
+  => s
+  -> Q_Number
+  -> (s -> a -> m s)
+  -> FT (Q_AlgF s a) m () -> m ()
+runAlg s0 q0 trans f = iterT go f where
+  qs0 = HashMap.fromList [(a,q0) | a <- [minBound .. maxBound]]
 
-defaultOpts = Q_Opts {
-    o_alpha = 0.1
-  , o_gamma = 0.5
-  , o_eps = 0.3
-  }
+  go (InitialState next) = next s0
+  go (Transition s a next) = trans s a >>= next
+  go (Get_Actions s next) = do
+    get >>= \q ->
+      case HashMap.lookup s q of
+        Nothing -> next (HashMap.toList qs0)
+        Just qs -> next (HashMap.toList qs)
+  go (Modify_Q s a f next) = do
+    let qs0' = HashMap.insert a (f q0) qs0
+    modify $ HashMap.insertWith (const . HashMap.insertWith (const . f) a q0) s qs0'
 
--- | Take eps-greedy action
-qaction :: (MonadRnd g m, Q_Problem s a, MonadFree (Q_AlgF s a) m) => Q_Number -> s -> m a
-qaction eps s = do
 
-  qs <- get_Actions s
-
-  let abest = fst $ maximumBy (compare`on`snd) qs
-  let arest = map fst $ filter (\x -> fst x /= abest) qs
-
-  join $ Rnd.fromList [
-    swap (toRational (1.0-eps), do
-      return (q_mark_best True abest)),
-    swap (toRational eps, do
-      r <- Rnd.uniform arest
-      return (q_mark_best False r))
-    ]
-
-qexec :: (MonadRnd g m, Q_Problem s a, MonadFree (Q_AlgF s a) m) => Q_Opts -> m s
-qexec Q_Opts{..} = do
-  initialState >>= do
-  iterateUntilM (not . q_is_final) $ \s -> do
-    a <- qaction o_eps s
-    s' <- transition s a
-    return s'
-
-qlearn :: (MonadRnd g m, Q_Problem s a, MonadFree (Q_AlgF s a) m) => Q_Opts -> m s
-qlearn Q_Opts{..} = do
-  initialState >>= do
-  iterateUntilM (not . q_is_final) $ \s -> do
-    a <- qaction o_eps s
-    s' <- transition s a
-    let r = q_reward s a s
-    max_qs' <- snd . maximumBy (compare`on`snd) <$> get_Actions s'
-    modify_Q s a $ \qs -> qs + o_alpha * (r + o_gamma * max_qs' - qs)
-    return s'
+-- test :: (MonadRnd g m, Q_Problem s a) => s -> m s
+-- test s0 = runAlg s0 (qexec defaultOpts)
 
