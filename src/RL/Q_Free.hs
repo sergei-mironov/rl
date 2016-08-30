@@ -35,25 +35,36 @@ type Q_AlgT s a m = FT (Q_AlgF s a) m
 -- qexec' :: (MonadRnd g (Q_AlgT s a m), Q_Problem s a) => Q_Opts -> (Q_AlgT s a) m s
 -- qexec' = qexec
 
-runAlg :: (MonadRnd g m, Hashable s, Hashable a, Q_Problem s a, MonadState (Q s a) m)
-  => s
+-- class (Q_Problem pr s a) => Q_Driver pr m s a | pr -> m where
+--   q_transition :: (MonadRnd g m) => pr -> s -> a -> m s
+
+
+runAlg :: (Q_Problem pr (FT (Q_AlgF s a) (StateT (Q s a) m)) s a, MonadRnd g m)
+  => (pr -> FT (Q_AlgF s a) (StateT (Q s a) m) s)
+  -> s
   -> Q_Number
-  -> (s -> a -> m s)
-  -> FT (Q_AlgF s a) m () -> m ()
-runAlg s0 q0 trans f = iterT go f where
-  qs0 = HashMap.fromList [(a,q0) | a <- [minBound .. maxBound]]
+  -> Q s a
+  -> pr
+  -> m (Q s a)
+runAlg alg s0 qsa0 q0 pr = flip execStateT q0 $ iterT go (alg pr) where
+
+  qs0 = HashMap.fromList [(a,qsa0) | a <- [minBound .. maxBound]]
 
   go (InitialState next) = next s0
-  go (Transition s a next) = trans s a >>= next
+  -- go (Transition s a next) = q_transition pr s a >>= next
   go (Get_Actions s next) = do
     get >>= \q ->
       case HashMap.lookup s q of
         Nothing -> next (HashMap.toList qs0)
         Just qs -> next (HashMap.toList qs)
   go (Modify_Q s a f next) = do
-    let qs0' = HashMap.insert a (f q0) qs0
-    modify $ HashMap.insertWith (const . HashMap.insertWith (const . f) a q0) s qs0'
+    let qs0' = HashMap.insert a (f qsa0) qs0
+    modify $ HashMap.insertWith (const . HashMap.insertWith (const . f) a qsa0) s qs0'
+    next
 
+
+qexec o = runAlg (qexecF o)
+qlearn o = runAlg (qlearnF o)
 
 -- test :: (MonadRnd g m, Q_Problem s a) => s -> m s
 -- test s0 = runAlg s0 (qexec defaultOpts)

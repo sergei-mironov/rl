@@ -86,7 +86,7 @@ gw_eval_mc gw = do
 
 
 
--- | Uniform random policy iteration wite MC
+-- | Uniform random policy iteration with MC alg
 gw_iter_mc :: (Show num, Fractional num, Ord num, Real num) => GW num -> IO ()
 gw_iter_mc gw = do
   let max = 200000

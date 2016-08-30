@@ -84,7 +84,7 @@ arbitrary_state gw@GW{..} = do
       False -> return (x,y)
 
 
-transition :: GW num -> Point -> Action -> ((Int, Int), Bool)
+transition :: GW num -> Point -> Action -> (Point, Bool)
 transition (GW (sx,sy) exits) (x,y) a =
   let
     check (x',y') =
