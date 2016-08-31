@@ -20,24 +20,18 @@ type Q s a = HashMap s (HashMap a Q_Number)
 emptyQ :: Q s a
 emptyQ = HashMap.empty
 
--- q2v :: (Eq s, Hashable s, Eq a, Hashable a) => Q s a -> s -> Q_Number
--- q2v q s = foldl' max 0 (q^.q_map.(zidx mempty s))
+type V s = HashMap s Q_Number
 
--- zidx def name = Lens.lens get set where
---   get m = case HashMap.lookup name m of
---             Just x -> x
---             Nothing -> def
---   set = (\hs mhv -> HashMap.insert name mhv hs)
--- type Q_Alg s a = Free (Q_AlgF s a)
+q2v :: Q s a -> V s
+q2v = HashMap.map sum
 
-type Q_AlgT s a m = FT (Q_AlgF s a) m
+-- FIXME: handle missing states case
+diffV :: (Eq s, Hashable s) => V s -> V s -> Q_Number
+diffV tgt src = sum (HashMap.intersectionWith (\a b -> abs (a - b)) tgt src)
 
--- qexec' :: (MonadRnd g (Q_AlgT s a m), Q_Problem s a) => Q_Opts -> (Q_AlgT s a) m s
--- qexec' = qexec
 
 class (Q_Problem pr s a) => Q_Driver pr m s a | pr -> m where
   q_trace :: (MonadRnd g m) => pr -> s -> a -> Q s a -> m ()
-
 
 runAlg :: forall pr s a m g . (Q_Driver pr m s a, MonadRnd g m)
   => (pr -> FT (Q_AlgF s a) (StateT (Q s a) m) s)

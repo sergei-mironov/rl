@@ -74,13 +74,13 @@ showGenericPolicy pr@(GW (sx,sy) _) p@GenericPolicy{..} = liftIO $ do
 
 
 -- FIXME: remove recursion
-arbitrary_state :: MonadRnd g m => GW t -> m (Int, Int)
-arbitrary_state gw@GW{..} = do
+arbitraryState :: MonadRnd g m => GW t -> m Point
+arbitraryState gw@GW{..} = do
     let (sx,sy) = gw_size
     x <- getRndR (0,sx-1)
     y <- getRndR (0,sy-1)
     case (x,y) `member` gw_exits of
-      True -> arbitrary_state gw
+      True -> arbitraryState gw
       False -> return (x,y)
 
 
@@ -102,4 +102,19 @@ transition (GW (sx,sy) exits) (x,y) a =
   in
   (p',term)
 
+
+withLearnPlot cnt f = do
+  d <- newData "learnRate"
+  withPlot "plot1" [heredoc|
+    set grid back ls 102
+    set xrange [0:${show cnt}]
+    set yrange [-20:20]
+    set terminal x11 1 noraise
+    done = 0
+    bind all 'd' 'done = 1'
+    while(!done) {
+      plot ${dat d} using 1:2 with lines
+      pause 1
+    }
+    |] (f d)
 

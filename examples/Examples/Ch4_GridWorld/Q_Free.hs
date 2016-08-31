@@ -2,40 +2,64 @@ module Examples.Ch4_GridWorld.Q_Free where
 
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Set as Set
+import qualified Data.Map as Map
+import qualified Prelude
 
-import RL.Types hiding (Q)
+import RL.Types hiding (Q, q2v)
 import RL.Imports
 import RL.Q_Free as Q
 
 import Examples.Ch4_GridWorld.Base(GW(..), Point, Action)
 import qualified Examples.Ch4_GridWorld.Base as GW
+import qualified Examples.Ch4_GridWorld.DP as DP
 
 data Q_GW m = Q_GW {
-    gw :: GW Q_Number
+    gw_base :: GW Q_Number
   , gw_trace :: Point -> Action -> Q Point Action -> m ()
   }
 
 instance Q_Problem (Q_GW m) Point Action where
   q_reward Q_GW{..} s1 a s2 = -1
-  q_is_terminal Q_GW{..} p = p `Set.member` (gw_exits gw)
+  q_is_terminal Q_GW{..} p = p `Set.member` (gw_exits gw_base)
   q_mark_best Q_GW{..} best = id
-  q_transition Q_GW{..} s a = fst $ GW.transition gw s a
+  q_transition Q_GW{..} s a = fst $ GW.transition gw_base s a
 
 instance Q_Driver (Q_GW m) m Point Action where
   q_trace = gw_trace
+
+sv2v :: (Hashable s, Eq s) => StateVal Q_Number s -> V s
+sv2v sv = HashMap.fromList $ Map.toList $ v_map sv
 
 gw_iter_q :: GW Q_Number -> IO ()
 gw_iter_q gw =
   let
     qo = defaultOpts -- Q options
-    q0 = Q.emptyQ -- Initial Q table
-    g0 = pureMT 33 -- Initial RNG
-    s0 = (0,0) -- Initial state TODO: get it random
+    q0 = Q.emptyQ    -- Initial Q table
+    g0 = pureMT 33   -- Initial RNG
+    cnt = 2*10^6
+
+    st_q :: Lens' (a,b) a
+    st_q = _1
+    st_i :: Lens' (a,b) b
+    st_i = _2
   in do
-  flip runRndT g0 $ do
-    flip execStateT False $ do
-      qlearn qo s0 0 q0 $ Q_GW gw $ \s a q -> do
-        put True
-        liftIO $ putStrLn "Q update!"
-  return ()
+
+  {- Reference StateVal -}
+  v_dp <- DP.gw_eval_dp gw
+
+  GW.withLearnPlot cnt $ \d -> do
+    flip evalRndT_ g0 $ do
+      flip execStateT (q0,0) $ do
+        loop $ do
+          s0 <- GW.arbitraryState gw
+          q <- use st_q
+          qlearn qo s0 0 q $ Q_GW gw $ \s a q -> do
+            i <- use st_i
+            when (i >= cnt) $ do
+              break ()
+            st_q %= const q
+            st_i %= (+1)
+          (q',i) <- get
+          liftIO $ pushData d i (diffV (q2v q') (sv2v v_dp))
+          return ()
 

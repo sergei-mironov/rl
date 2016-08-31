@@ -11,6 +11,7 @@ import RL.Imports
 import Examples.Ch4_GridWorld.Base
 import Examples.Ch4_GridWorld.DP
 import Examples.Ch4_GridWorld.MC
+import Examples.Ch4_GridWorld.Q_Free
 
 gw :: GW Rational
 gw = GW (4,4) (Set.fromList [(0,0),(3,3)])

@@ -32,6 +32,11 @@ runRnd r g = runIdentity $ runStateT (unRndT r) g
 runRndT :: RndT g m a -> g -> m (a,g)
 runRndT r g = runStateT (unRndT r) g
 
+evalRndT :: (Monad m) => RndT g m a -> g -> m a
+evalRndT r g = fst <$> runRndT r g
+
+evalRndT_ r g = evalRndT r g  >> return ()
+
 instance (Monad m, RandomGen g) => MonadRnd g (RndT g m) where
   getGen = RndT get
   putGen = RndT .  put

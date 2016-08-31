@@ -24,8 +24,8 @@ data PlotData = PlotData {
 newData :: FilePath -> IO PlotData
 newData ((-<.> ".dat") -> filename) = PlotData filename <$> openFile filename WriteMode
 
-push :: (MonadIO m, Fractional num, Real num) => PlotData -> num -> num -> m ()
-push PlotData{..} (fromRational . toRational -> x :: Double) (fromRational . toRational -> y :: Double) = liftIO $ do
+pushData :: (MonadIO m, Fractional num, Real num) => PlotData -> num -> num -> m ()
+pushData PlotData{..} (fromRational . toRational -> x :: Double) (fromRational . toRational -> y :: Double) = liftIO $ do
   hPutStrLn ps_handle (show x ++ "\t" ++ show y) >> hFlush ps_handle
 
 dat :: PlotData -> String
@@ -66,5 +66,5 @@ test = do
   forM_ [0..100] $ \i@(fromInteger -> r) -> do
     when (i`mod`10 == 0) $ do
       threadDelay (10^6)
-    push d r (r*r  / 3.2)
+    pushData d r (r*r  / 3.2)
 

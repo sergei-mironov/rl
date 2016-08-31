@@ -24,7 +24,7 @@ data Q_S = Q_S {
 
 instance (Monad m) => Q_Problem m (Q_GW m) Q_S Point Action where
 
-  q_state (Q_GW gw _) = Q_S <$> arbitrary_state gw <*> pure 0
+  q_state (Q_GW gw _) = Q_S <$> arbitraryState gw <*> pure 0
 
   q_transition (Q_GW gw _) (Q_S s n) a = return (Q_S (fst $ transition gw s a) (n+1))
 

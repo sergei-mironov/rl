@@ -105,5 +105,5 @@ policy_eval Opts{..} pr p = do
       Nothing -> return ()
       Just Monitor{..} -> do
         v <- use es_v
-        push mon_data (fromInteger i) (diffVal mon_target v)
+        pushData mon_data (fromInteger i) (diffVal mon_target v)
 
