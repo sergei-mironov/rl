@@ -35,11 +35,11 @@ type Q_AlgT s a m = FT (Q_AlgF s a) m
 -- qexec' :: (MonadRnd g (Q_AlgT s a m), Q_Problem s a) => Q_Opts -> (Q_AlgT s a) m s
 -- qexec' = qexec
 
--- class (Q_Problem pr s a) => Q_Driver pr m s a | pr -> m where
---   q_transition :: (MonadRnd g m) => pr -> s -> a -> m s
+class (Q_Problem pr s a) => Q_Driver pr m s a | pr -> m where
+  q_trace :: (MonadRnd g m) => pr -> s -> a -> Q s a -> m ()
 
 
-runAlg :: (Q_Problem pr (FT (Q_AlgF s a) (StateT (Q s a) m)) s a, MonadRnd g m)
+runAlg :: forall pr s a m g . (Q_Driver pr m s a, MonadRnd g m)
   => (pr -> FT (Q_AlgF s a) (StateT (Q s a) m) s)
   -> s
   -> Q_Number
@@ -48,8 +48,10 @@ runAlg :: (Q_Problem pr (FT (Q_AlgF s a) (StateT (Q s a) m)) s a, MonadRnd g m)
   -> m (Q s a)
 runAlg alg s0 qsa0 q0 pr = flip execStateT q0 $ iterT go (alg pr) where
 
+  qs0 :: HashMap a Q_Number
   qs0 = HashMap.fromList [(a,qsa0) | a <- [minBound .. maxBound]]
 
+  go :: Q_AlgF s a (StateT (Q s a) m s) -> StateT (Q s a) m s
   go (InitialState next) = next s0
   -- go (Transition s a next) = q_transition pr s a >>= next
   go (Get_Actions s next) = do
@@ -60,6 +62,7 @@ runAlg alg s0 qsa0 q0 pr = flip execStateT q0 $ iterT go (alg pr) where
   go (Modify_Q s a f next) = do
     let qs0' = HashMap.insert a (f qsa0) qs0
     modify $ HashMap.insertWith (const . HashMap.insertWith (const . f) a qsa0) s qs0'
+    get >>= lift . q_trace pr s a
     next
 
 

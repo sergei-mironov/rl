@@ -20,12 +20,11 @@ type Q_Number = Double
 --   q_reward :: s -> a -> s -> Q_Number
 
 class (Eq a, Eq s, Hashable a, Hashable s, Bounded a, Enum a, Show a) =>
-        Q_Problem pr m s a | pr -> m, pr -> s , pr -> a where
+        Q_Problem pr s a | pr -> s , pr -> a where
   q_reward :: pr -> s -> a -> s -> Q_Number
   q_is_terminal :: pr -> s -> Bool
   q_mark_best :: pr -> Bool -> a -> a
-
-  q_transition :: pr -> s -> a -> m s
+  q_transition :: pr -> s -> a -> s
 
 
 data Q_AlgF s a next =
@@ -50,7 +49,7 @@ defaultOpts = Q_Opts {
   }
 
 -- | Take eps-greedy action
-qaction :: (MonadRnd g m, Q_Problem pr m s a, MonadFree (Q_AlgF s a) m) => Q_Number -> s -> pr -> m a
+qaction :: (MonadRnd g m, Q_Problem pr s a, MonadFree (Q_AlgF s a) m) => Q_Number -> s -> pr -> m a
 qaction eps s pr = do
   qs <- get_Actions s
   let abest = fst $ maximumBy (compare`on`snd) qs
@@ -65,22 +64,22 @@ qaction eps s pr = do
 
 -- | Execute Q-actions without learning
 -- FIXME: take best action
-qexecF :: (MonadRnd g m, Q_Problem pr m s a, MonadFree (Q_AlgF s a) m) => Q_Opts -> pr -> m s
+qexecF :: (MonadRnd g m, Q_Problem pr s a, MonadFree (Q_AlgF s a) m) => Q_Opts -> pr -> m s
 qexecF Q_Opts{..} pr = do
   initialState >>= do
   iterateUntilM (not . q_is_terminal pr) $ \s -> do
     a <- qaction o_eps s pr
-    s' <- q_transition pr s a
+    s' <- pure $ q_transition pr s a
     return s'
 
 -- | Execute Q-Learning algorithm
-qlearnF :: (MonadRnd g m, Q_Problem pr m s a, MonadFree (Q_AlgF s a) m) => Q_Opts -> pr -> m s
+qlearnF :: (MonadRnd g m, Q_Problem pr s a, MonadFree (Q_AlgF s a) m) => Q_Opts -> pr -> m s
 qlearnF Q_Opts{..} pr = do
   initialState >>= do
   iterateUntilM (not . q_is_terminal pr) $ \s -> do
     a <- qaction o_eps s pr
-    s' <- q_transition pr s a
-    let r = q_reward pr s a s
+    s' <- pure $ q_transition pr s a
+    r <- pure $ q_reward pr s a s
     max_qs' <- snd . maximumBy (compare`on`snd) <$> get_Actions s'
     modify_Q s a $ \qs -> qs + o_alpha * (r + o_gamma * max_qs' - qs)
     return s'
