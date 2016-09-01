@@ -47,6 +47,7 @@ instance (Fractional num, Ord num) => DP_Policy num GWRandomPolicy GW (Int,Int) 
     where
       a = rl_actions g s
 
+showStateVal gw StateVal{..} = showGW gw (\p -> Map.lookup p v_map)
 
 gw_eval_dp :: (Fractional num, Ord num, Real num) => GW num -> IO (StateVal num (Int,Int))
 gw_eval_dp gw =

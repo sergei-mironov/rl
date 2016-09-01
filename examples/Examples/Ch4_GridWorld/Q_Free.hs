@@ -30,13 +30,15 @@ instance Q_Driver (Q_GW m) m Point Action where
 sv2v :: (Hashable s, Eq s) => StateVal Q_Number s -> V s
 sv2v sv = HashMap.fromList $ Map.toList $ v_map sv
 
+showStateVal gw v = GW.showGW gw (\p -> HashMap.lookup p v)
+
 gw_iter_q :: GW Q_Number -> IO ()
 gw_iter_q gw =
   let
     qo = defaultOpts -- Q options
     q0 = Q.emptyQ    -- Initial Q table
     g0 = pureMT 33   -- Initial RNG
-    cnt = 2*10^6
+    cnt = 200*10^3
 
     st_q :: Lens' (a,b) a
     st_q = _1
@@ -56,10 +58,13 @@ gw_iter_q gw =
           qlearn qo s0 0 q $ Q_GW gw $ \s a q -> do
             i <- use st_i
             when (i >= cnt) $ do
+              liftIO $ putStrLn $ "Exiting at " <> show i
               break ()
             st_q %= const q
             st_i %= (+1)
           (q',i) <- get
+          liftIO $ putStrLn $ "Loop i = " <> show i
+          liftIO $ showStateVal gw (q2v q')
           liftIO $ pushData d i (diffV (q2v q') (sv2v v_dp))
-          return ()
+          st_q %= const q'
 

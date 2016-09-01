@@ -46,11 +46,11 @@ data GW num = GW {
 data GWRandomPolicy = GWRandomPolicy
   deriving(Show)
 
-showStateVal :: (MonadIO m, Real num) => GW num -> StateVal num Point -> m ()
-showStateVal (GW (sx,sy) _) StateVal{..} = liftIO $ do
+showGW :: (MonadIO m, Real num) => GW num -> (Point -> Maybe num) -> m ()
+showGW (GW (sx,sy) _) lookup = liftIO $ do
   forM_ [0..sy-1] $ \y -> do
     forM_ [0..sx-1] $ \x -> do
-      case Map.lookup (x,y) v_map of
+      case lookup (x,y) of
         Just v -> do
           printf "%-2.1f " ((fromRational $ toRational v) :: Double)
         Nothing -> do

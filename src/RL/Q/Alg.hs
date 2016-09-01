@@ -76,7 +76,7 @@ qexecF Q_Opts{..} pr = do
 qlearnF :: (MonadRnd g m, Q_Problem pr s a, MonadFree (Q_AlgF s a) m) => Q_Opts -> pr -> m s
 qlearnF Q_Opts{..} pr = do
   initialState >>= do
-  iterateUntilM (not . q_is_terminal pr) $ \s -> do
+  iterateUntilM (q_is_terminal pr) $ \s -> do
     a <- qaction o_eps s pr
     s' <- pure $ q_transition pr s a
     r <- pure $ q_reward pr s a s
