@@ -23,7 +23,7 @@ emptyQ = HashMap.empty
 type V s = HashMap s Q_Number
 
 q2v :: Q s a -> V s
-q2v = HashMap.map sum
+q2v = HashMap.map (snd . maximumBy (compare`on`snd) . HashMap.toList)
 
 -- FIXME: handle missing states case
 diffV :: (Eq s, Hashable s) => V s -> V s -> Q_Number
