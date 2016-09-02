@@ -35,7 +35,13 @@ showStateVal gw v = GW.showGW gw (\p -> HashMap.lookup p v)
 gw_iter_q :: GW Q_Number -> IO ()
 gw_iter_q gw =
   let
-    qo = defaultOpts -- Q options
+    -- Q options
+    o = Q_Opts {
+           o_alpha = 0.1
+         , o_gamma = 1.0
+         , o_eps = 0.3
+         }
+
     q0 = Q.emptyQ    -- Initial Q table
     g0 = pureMT 33   -- Initial RNG
     cnt = 200*10^3
@@ -55,7 +61,8 @@ gw_iter_q gw =
         loop $ do
           s0 <- GW.arbitraryState gw
           q <- use st_q
-          qlearn qo s0 0 q $ Q_GW gw $ \s a q -> do
+          qlearn o s0 0 q $ Q_GW gw $ \s a q -> do
+            liftIO $ putStrLn $ show s <> "  " <> GW.showAction a
             i <- use st_i
             when (i >= cnt) $ do
               liftIO $ putStrLn $ "Exiting at " <> show i

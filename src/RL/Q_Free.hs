@@ -33,7 +33,7 @@ diffV tgt src = sum (HashMap.intersectionWith (\a b -> abs (a - b)) tgt src)
 class (Q_Problem pr s a) => Q_Driver pr m s a | pr -> m where
   q_trace :: (MonadRnd g m) => pr -> s -> a -> Q s a -> m ()
 
-runAlg :: forall pr s a m g . (Q_Driver pr m s a, MonadRnd g m)
+runAlg :: forall pr s a m g . (Show s, Q_Driver pr m s a, MonadRnd g m)
   => (pr -> FT (Q_AlgF s a) (StateT (Q s a) m) s)
   -> s
   -> Q_Number
@@ -45,19 +45,44 @@ runAlg alg s0 qsa0 q0 pr = flip execStateT q0 $ iterT go (alg pr) where
   qs0 :: HashMap a Q_Number
   qs0 = HashMap.fromList [(a,qsa0) | a <- [minBound .. maxBound]]
 
+
+  getDef d s m =
+    case HashMap.lookup s m of
+      Just x -> x`HashMap.union`d
+      Nothing -> d
+
+  getDef2 d s m =
+    case HashMap.lookup s m of
+      Just x -> x
+      Nothing -> d
+
   go :: Q_AlgF s a (StateT (Q s a) m s) -> StateT (Q s a) m s
   go (InitialState next) = next s0
-  -- go (Transition s a next) = q_transition pr s a >>= next
   go (Get_Actions s next) = do
     get >>= \q ->
       case HashMap.lookup s q of
         Nothing -> next (HashMap.toList qs0)
         Just qs -> next (HashMap.toList qs)
   go (Modify_Q s a f next) = do
-    let qs0' = HashMap.insert a (f qsa0) qs0
-    modify $ HashMap.insertWith (const . HashMap.insertWith (const . f) a qsa0) s qs0'
-    get >>= lift . q_trace pr s a
+
+    saq <- get
+    -- traceM saq
+    aq <- pure $ getDef qs0 s saq
+    q <- pure $ getDef2 qsa0 a aq
+    aq' <- pure $ HashMap.insert a (f q) aq
+    saq' <- pure $ HashMap.insert s aq' saq
+    put saq'
+    -- traceM saq'
+    lift (q_trace pr s a saq')
     next
+
+    -- let qs0' = HashMap.insert a (f qsa0) qs0
+    -- get >>= traceM
+    -- modify $ HashMap.insertWith (const . HashMap.insertWith (const . f) a qsa0) s qs0'
+    -- get >>= traceM
+    -- get >>= lift . q_trace pr s a
+    -- lift (q_trace pr s a saq')
+    -- next
 
 
 qexec o = runAlg (qexecF o)
