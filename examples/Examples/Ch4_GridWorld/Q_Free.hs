@@ -39,7 +39,7 @@ gw_iter_q gw =
     o = Q_Opts {
            o_alpha = 0.1
          , o_gamma = 1.0
-         , o_eps = 0.3
+         , o_eps = 0.7
          }
 
     q0 = Q.emptyQ    -- Initial Q table
@@ -53,7 +53,7 @@ gw_iter_q gw =
   in do
 
   {- Reference StateVal -}
-  v_dp <- DP.gw_eval_dp gw
+  v_dp <- DP.gw_iter_dp gw
 
   GW.withLearnPlot cnt $ \d -> do
     flip evalRndT_ g0 $ do

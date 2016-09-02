@@ -49,16 +49,29 @@ instance (Fractional num, Ord num) => DP_Policy num GWRandomPolicy GW (Int,Int) 
 
 showStateVal gw StateVal{..} = showGW gw (\p -> Map.lookup p v_map)
 
+-- | Evaluate random policy with DP method
 gw_eval_dp :: (Fractional num, Ord num, Real num) => GW num -> IO (StateVal num (Int,Int))
 gw_eval_dp gw =
   let
     opts = defaultOpts{eo_max_iter=300, eo_gamma = 1, eo_etha = 0.001}
+    p = GWRandomPolicy
   in do
-  v <- policy_eval gw GWRandomPolicy opts (zero_sate_values gw)
+  v <- policy_eval gw p opts (zero_sate_values gw)
   showStateVal gw v
   p' <- policy_improve gw opts v
   showGenericPolicy gw p'
   return v
 
+-- | Calculate Best policy, print its value function
+gw_iter_dp :: (Fractional num, Ord num, Real num) => GW num -> IO (StateVal num (Int,Int))
+gw_iter_dp gw =
+  let
+    opts = defaultOpts{eo_max_iter=300, eo_gamma = 1, eo_etha = 0.001, eo_debug = const (return ())}
+    v0 = zero_sate_values gw
+    p0 = GWRandomPolicy
+  in do
+  (v',p') <- policy_iteraton gw p0 v0 opts
+  showStateVal gw v'
+  return v'
 
 
