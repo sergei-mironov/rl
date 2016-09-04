@@ -1,6 +1,8 @@
 module RL.TD.Class where
 
-import Control.Monad.Rnd as Rnd
+import qualified Data.HashMap.Strict as HashMap
+import qualified Control.Monad.Rnd as Rnd
+
 import RL.Imports
 
 type TD_Number = Double
@@ -26,4 +28,24 @@ eps_action eps pr as = do
       (r,q) <- Rnd.uniform arest
       return (td_mark_best pr False r, q))
     ]
+
+
+class (TD_Problem pr s a) => TD_Driver pr m s a | pr -> m where
+  td_trace :: (MonadRnd g m) => pr -> s -> a -> Q s a -> m ()
+
+
+-- FIXME: Move to Types.hs
+type Q s a = HashMap s (HashMap a TD_Number)
+
+emptyQ :: Q s a
+emptyQ = HashMap.empty
+
+type V s = HashMap s TD_Number
+
+q2v :: Q s a -> V s
+q2v = HashMap.map (snd . maximumBy (compare`on`snd) . HashMap.toList)
+
+-- FIXME: handle missing states case
+diffV :: (Eq s, Hashable s) => V s -> V s -> TD_Number
+diffV tgt src = sum (HashMap.intersectionWith (\a b -> abs (a - b)) tgt src)
 

@@ -14,7 +14,6 @@ library
     RL.MC,
     RL.MC.ES,
     RL.MC.Types,
-    RL.Q,
     RL.TD,
     RL.Imports,
     RL.Types,

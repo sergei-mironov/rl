@@ -1,9 +1,11 @@
 {-# LANGUAGE DeriveFunctor #-}
 module RL.TDl where
 
-import Control.Monad.Loops
 import qualified Data.List as List
+import qualified Data.HashMap.Strict as HashMap
+import qualified Data.HashSet as HashSet
 
+import Control.Monad.Trans.Free.Church
 import RL.Imports
 import RL.TD.Class
 
@@ -23,9 +25,7 @@ data TDl_Opts = TDl_Opts {
   , o_eps :: TD_Number
   } deriving (Show)
 
-access a = fromMaybe err . List.lookup a where
-  err = error "assert: access: no such action"
-
+-- FIXME: make lambda-related logic a runner task
 sarsa_lambda :: (MonadRnd g m, TD_Problem pr s a, MonadFree (TDl_AlgF s a) m) =>
   TD_Number -> TDl_Opts -> pr -> m s
 sarsa_lambda lambda TDl_Opts{..} pr = do
@@ -46,5 +46,58 @@ sarsa_lambda lambda TDl_Opts{..} pr = do
       return (s',(a',qs'a'))
 
 
+
+-- FIXME: re-implement Get-Actions case more carefully
+runAlg :: forall pr s a m g . (Show s, TD_Driver pr m s a, MonadRnd g m)
+  => (pr -> FT (TDl_AlgF s a) (StateT (Q s a) m) s)
+  -> s
+  -> TD_Number
+  -> Q s a
+  -> pr
+  -> m (Q s a)
+runAlg alg s0 qsa0 q0 pr = flip execStateT q0 $ iterT go (alg pr) where
+
+  qs0 :: HashMap a TD_Number
+  qs0 = HashMap.fromList [(a,qsa0) | a <- [minBound .. maxBound]]
+
+  lookupAQ d s m =
+    case HashMap.lookup s m of
+      Just x -> x`HashMap.union`d
+      Nothing -> d
+
+  lookupQ d s m =
+    case HashMap.lookup s m of
+      Just x -> x
+      Nothing -> d
+
+  go :: TDl_AlgF s a (StateT (Q s a) m s) -> StateT (Q s a) m s
+  go = \case
+
+    InitialState next -> do
+      next s0
+
+    Query_Q s next -> do
+      get >>= \q ->
+        case HashMap.lookup s q of
+          Nothing -> next (HashMap.toList qs0)
+          Just qs -> next (HashMap.toList qs)
+
+    Modify_Q s a f next -> do
+      saq <- get
+      -- traceM saq
+      aq <- pure $ lookupAQ qs0 s saq
+      q <- pure $ lookupQ qsa0 a aq
+      aq' <- pure $ HashMap.insert a (f q) aq
+      saq' <- pure $ HashMap.insert s aq' saq
+      put saq'
+      -- traceM saq'
+      lift (td_trace pr s a saq')
+      next
+
+    Query_Z next -> do
+      undefined
+
+    Modify_Z s a f next -> do
+      undefined
 
 
