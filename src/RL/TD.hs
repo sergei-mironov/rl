@@ -33,7 +33,7 @@ diffV tgt src = sum (HashMap.intersectionWith (\a b -> abs (a - b)) tgt src)
 
 
 class (TD_Problem pr s a) => TD_Driver pr m s a | pr -> m where
-  q_trace :: (MonadRnd g m) => pr -> s -> a -> Q s a -> m ()
+  td_trace :: (MonadRnd g m) => pr -> s -> a -> Q s a -> m ()
 
 -- FIXME: re-implement Get-Actions case more carefully
 runAlg :: forall pr s a m g . (Show s, TD_Driver pr m s a, MonadRnd g m)
@@ -76,15 +76,15 @@ runAlg alg s0 qsa0 q0 pr = flip execStateT q0 $ iterT go (alg pr) where
     saq' <- pure $ HashMap.insert s aq' saq
     put saq'
     -- traceM saq'
-    lift (q_trace pr s a saq')
+    lift (td_trace pr s a saq')
     next
 
     -- let qs0' = HashMap.insert a (f qsa0) qs0
     -- get >>= traceM
     -- modify $ HashMap.insertWith (const . HashMap.insertWith (const . f) a qsa0) s qs0'
     -- get >>= traceM
-    -- get >>= lift . q_trace pr s a
-    -- lift (q_trace pr s a saq')
+    -- get >>= lift . td_trace pr s a
+    -- lift (td_trace pr s a saq')
     -- next
 
 qexec o = runAlg (qexecF o)

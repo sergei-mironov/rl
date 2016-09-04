@@ -19,13 +19,13 @@ data TD_GW m = TD_GW {
   }
 
 instance TD_Problem (TD_GW m) Point Action where
-  q_reward TD_GW{..} s1 a s2 = -1
-  q_is_terminal TD_GW{..} p = p `Set.member` (gw_exits gw_base)
-  q_mark_best TD_GW{..} best = id
-  q_transition TD_GW{..} s a = fst $ GW.transition gw_base s a
+  td_reward TD_GW{..} s1 a s2 = -1
+  td_is_terminal TD_GW{..} p = p `Set.member` (gw_exits gw_base)
+  td_mark_best TD_GW{..} best = id
+  td_transition TD_GW{..} s a = fst $ GW.transition gw_base s a
 
 instance TD_Driver (TD_GW m) m Point Action where
-  q_trace = gw_trace
+  td_trace = gw_trace
 
 sv2v :: (Hashable s, Eq s) => StateVal TD_Number s -> V s
 sv2v sv = HashMap.fromList $ Map.toList $ v_map sv

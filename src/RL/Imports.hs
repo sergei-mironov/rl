@@ -10,6 +10,8 @@ module RL.Imports (
   , module Control.Monad.Rnd
   , module Control.Break
   , module Control.Lens
+  , module Control.Monad.Free.Class
+  , module Control.Monad.Free.TH
   , module Data.Bits
   , module Data.Ratio
   , module Data.Tuple
@@ -50,6 +52,8 @@ import Control.Monad.State.Strict
 import Control.Monad.Rnd
 import Control.Break
 import Control.Lens (Lens', makeLenses, (%=), (^.), view, use, uses, _1, _2, _3, _4, _5, _6)
+import Control.Monad.Free.Class
+import Control.Monad.Free.TH (makeFree)
 import Data.Bits
 import Data.Ratio
 import Data.Tuple
