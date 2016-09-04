@@ -8,38 +8,29 @@ import Control.Monad.Free.TH (makeFree)
 
 import RL.Imports
 
-type Q_Number = Double
-
--- class (Enum a, Bounded a, Eq a) => Q_Action a where
---   q_mark_best :: Bool -> a -> a
-
--- class (Eq s) => Q_State s where
---   q_is_final :: s -> Bool
-
--- class (Q_Action a, Q_State s) => Q_Problem s a | s -> a where
---   q_reward :: s -> a -> s -> Q_Number
+type TD_Number = Double
 
 class (Eq a, Eq s, Hashable a, Hashable s, Bounded a, Enum a, Show a) =>
-        Q_Problem pr s a | pr -> s , pr -> a where
-  q_reward :: pr -> s -> a -> s -> Q_Number
+        TD_Problem pr s a | pr -> s , pr -> a where
+  q_reward :: pr -> s -> a -> s -> TD_Number
   q_is_terminal :: pr -> s -> Bool
   q_mark_best :: pr -> Bool -> a -> a
   q_transition :: pr -> s -> a -> s
 
 
-data Q_AlgF s a next =
+data TD_AlgF s a next =
     InitialState (s -> next)
   -- | Transition s a (s -> next)
-  | Get_Actions s ([(a,Q_Number)] -> next)
-  | Modify_Q s a (Q_Number -> Q_Number) next
+  | Get_Actions s ([(a,TD_Number)] -> next)
+  | Modify_Q s a (TD_Number -> TD_Number) next
   deriving(Functor)
 
-makeFree ''Q_AlgF
+makeFree ''TD_AlgF
 
 data Q_Opts = Q_Opts {
-    o_alpha :: Q_Number
-  , o_gamma :: Q_Number
-  , o_eps :: Q_Number
+    o_alpha :: TD_Number
+  , o_gamma :: TD_Number
+  , o_eps :: TD_Number
 } deriving (Show)
 
 defaultOpts = Q_Opts {
@@ -49,7 +40,7 @@ defaultOpts = Q_Opts {
   }
 
 -- | Take eps-greedy action
-qaction :: (MonadRnd g m, Q_Problem pr s a, MonadFree (Q_AlgF s a) m) => Q_Number -> s -> pr -> m a
+qaction :: (MonadRnd g m, TD_Problem pr s a, MonadFree (TD_AlgF s a) m) => TD_Number -> s -> pr -> m a
 qaction eps s pr = do
   qs <- get_Actions s
   let abest = fst $ maximumBy (compare`on`snd) qs
@@ -64,7 +55,7 @@ qaction eps s pr = do
 
 -- | Execute Q-actions without learning
 -- FIXME: take best action
-qexecF :: (MonadRnd g m, Q_Problem pr s a, MonadFree (Q_AlgF s a) m) => Q_Opts -> pr -> m s
+qexecF :: (MonadRnd g m, TD_Problem pr s a, MonadFree (TD_AlgF s a) m) => Q_Opts -> pr -> m s
 qexecF Q_Opts{..} pr = do
   initialState >>= do
   iterateUntilM (not . q_is_terminal pr) $ \s -> do
@@ -73,7 +64,7 @@ qexecF Q_Opts{..} pr = do
     return s'
 
 -- | Execute Q-Learning algorithm
-qlearnF :: (MonadRnd g m, Q_Problem pr s a, MonadFree (Q_AlgF s a) m) => Q_Opts -> pr -> m s
+qlearnF :: (MonadRnd g m, TD_Problem pr s a, MonadFree (TD_AlgF s a) m) => Q_Opts -> pr -> m s
 qlearnF Q_Opts{..} pr = do
   initialState >>= do
   iterateUntilM (q_is_terminal pr) $ \s -> do

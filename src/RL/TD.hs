@@ -15,35 +15,35 @@ import Control.Monad.Trans.Free.Church
 import RL.Imports
 import RL.TD.Alg
 
-type Q s a = HashMap s (HashMap a Q_Number)
+type Q s a = HashMap s (HashMap a TD_Number)
 
 emptyQ :: Q s a
 emptyQ = HashMap.empty
 
-type V s = HashMap s Q_Number
+type V s = HashMap s TD_Number
 
 q2v :: Q s a -> V s
 q2v = HashMap.map (snd . maximumBy (compare`on`snd) . HashMap.toList)
 
 -- FIXME: handle missing states case
-diffV :: (Eq s, Hashable s) => V s -> V s -> Q_Number
+diffV :: (Eq s, Hashable s) => V s -> V s -> TD_Number
 diffV tgt src = sum (HashMap.intersectionWith (\a b -> abs (a - b)) tgt src)
 
 
-class (Q_Problem pr s a) => Q_Driver pr m s a | pr -> m where
+class (TD_Problem pr s a) => TD_Driver pr m s a | pr -> m where
   q_trace :: (MonadRnd g m) => pr -> s -> a -> Q s a -> m ()
 
 -- FIXME: re-implement Get-Actions case more carefully
-runAlg :: forall pr s a m g . (Show s, Q_Driver pr m s a, MonadRnd g m)
-  => (pr -> FT (Q_AlgF s a) (StateT (Q s a) m) s)
+runAlg :: forall pr s a m g . (Show s, TD_Driver pr m s a, MonadRnd g m)
+  => (pr -> FT (TD_AlgF s a) (StateT (Q s a) m) s)
   -> s
-  -> Q_Number
+  -> TD_Number
   -> Q s a
   -> pr
   -> m (Q s a)
 runAlg alg s0 qsa0 q0 pr = flip execStateT q0 $ iterT go (alg pr) where
 
-  qs0 :: HashMap a Q_Number
+  qs0 :: HashMap a TD_Number
   qs0 = HashMap.fromList [(a,qsa0) | a <- [minBound .. maxBound]]
 
 
@@ -57,7 +57,7 @@ runAlg alg s0 qsa0 q0 pr = flip execStateT q0 $ iterT go (alg pr) where
       Just x -> x
       Nothing -> d
 
-  go :: Q_AlgF s a (StateT (Q s a) m s) -> StateT (Q s a) m s
+  go :: TD_AlgF s a (StateT (Q s a) m s) -> StateT (Q s a) m s
   go (InitialState next) = next s0
   go (Get_Actions s next) = do
     get >>= \q ->
@@ -85,10 +85,9 @@ runAlg alg s0 qsa0 q0 pr = flip execStateT q0 $ iterT go (alg pr) where
     -- lift (q_trace pr s a saq')
     -- next
 
-
 qexec o = runAlg (qexecF o)
 qlearn o = runAlg (qlearnF o)
 
--- test :: (MonadRnd g m, Q_Problem s a) => s -> m s
+-- test :: (MonadRnd g m, TD_Problem s a) => s -> m s
 -- test s0 = runAlg s0 (qexec defaultOpts)
 
