@@ -33,6 +33,7 @@ diffV tgt src = sum (HashMap.intersectionWith (\a b -> abs (a - b)) tgt src)
 class (Q_Problem pr s a) => Q_Driver pr m s a | pr -> m where
   q_trace :: (MonadRnd g m) => pr -> s -> a -> Q s a -> m ()
 
+-- FIXME: re-implement Get-Actions case more carefully
 runAlg :: forall pr s a m g . (Show s, Q_Driver pr m s a, MonadRnd g m)
   => (pr -> FT (Q_AlgF s a) (StateT (Q s a) m) s)
   -> s
