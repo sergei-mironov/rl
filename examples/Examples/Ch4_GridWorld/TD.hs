@@ -1,4 +1,4 @@
-module Examples.Ch4_GridWorld.Q_Free where
+module Examples.Ch4_GridWorld.TD where
 
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Set as Set
@@ -7,7 +7,7 @@ import qualified Prelude
 
 import RL.Types hiding (Q, q2v)
 import RL.Imports
-import RL.Q_Free as Q
+import RL.TD as TD
 
 import Examples.Ch4_GridWorld.Base(GW(..), Point, Action)
 import qualified Examples.Ch4_GridWorld.Base as GW
@@ -42,7 +42,7 @@ gw_iter_q gw =
          , o_eps = 0.7
          }
 
-    q0 = Q.emptyQ    -- Initial Q table
+    q0 = TD.emptyQ    -- Initial Q table
     g0 = pureMT 33   -- Initial RNG
     cnt = 200*10^3
 

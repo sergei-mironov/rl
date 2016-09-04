@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveFunctor, DeriveAnyClass #-}
-module RL.Q_Free (
-    module RL.Q_Free
-  , module RL.Q.Alg
+module RL.TD (
+    module RL.TD
+  , module RL.TD.Alg
   ) where
 
 import qualified Data.List as List
@@ -13,7 +13,7 @@ import qualified Control.Lens as Lens
 import Control.Monad.Trans.Free.Church
 
 import RL.Imports
-import RL.Q.Alg
+import RL.TD.Alg
 
 type Q s a = HashMap s (HashMap a Q_Number)
 

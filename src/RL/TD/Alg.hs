@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
-module RL.Q.Alg where
+module RL.TD.Alg where
 
 import Control.Monad.Rnd as Rnd
 import Control.Monad.Loops
