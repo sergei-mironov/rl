@@ -41,7 +41,7 @@ qlearnF :: (MonadRnd g m, TD_Problem pr s a, MonadFree (TD_AlgF s a) m) => Q_Opt
 qlearnF Q_Opts{..} pr = do
   initialState >>= do
   iterateUntilM (td_is_terminal pr) $ \s -> do
-    a <- query_Q s >>= eps_action o_eps pr
+    (a,_) <- query_Q s >>= eps_action o_eps pr
     s' <- pure $ td_transition pr s a
     r <- pure $ td_reward pr s a s
     max_qs' <- snd . maximumBy (compare`on`snd) <$> query_Q s'
