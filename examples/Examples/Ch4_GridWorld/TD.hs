@@ -44,7 +44,7 @@ gw_iter_q gw =
 
     q0 = TD.emptyQ    -- Initial Q table
     g0 = pureMT 33   -- Initial RNG
-    cnt = 200*10^3
+    cnt = 20*10^3
 
     st_q :: Lens' (a,b) a
     st_q = _1
