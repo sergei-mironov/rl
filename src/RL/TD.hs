@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveFunctor, DeriveAnyClass #-}
 module RL.TD (
     module RL.TD
+  , module RL.TD.Class
   , module RL.TD.Alg
   ) where
 
@@ -13,6 +14,7 @@ import qualified Control.Lens as Lens
 import Control.Monad.Trans.Free.Church
 
 import RL.Imports
+import RL.TD.Class
 import RL.TD.Alg
 
 type Q s a = HashMap s (HashMap a TD_Number)
@@ -59,7 +61,7 @@ runAlg alg s0 qsa0 q0 pr = flip execStateT q0 $ iterT go (alg pr) where
 
   go :: TD_AlgF s a (StateT (Q s a) m s) -> StateT (Q s a) m s
   go (InitialState next) = next s0
-  go (Get_Actions s next) = do
+  go (Query_Q s next) = do
     get >>= \q ->
       case HashMap.lookup s q of
         Nothing -> next (HashMap.toList qs0)
