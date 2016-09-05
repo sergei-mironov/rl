@@ -30,22 +30,4 @@ eps_action eps pr as = do
     ]
 
 
-class (TD_Problem pr s a) => TD_Driver pr m s a | pr -> m where
-  td_trace :: (MonadRnd g m) => pr -> s -> a -> Q s a -> m ()
-
-
--- FIXME: Move to Types.hs
-type Q s a = HashMap s (HashMap a TD_Number)
-
-emptyQ :: Q s a
-emptyQ = HashMap.empty
-
-type V s = HashMap s TD_Number
-
-q2v :: Q s a -> V s
-q2v = HashMap.map (snd . maximumBy (compare`on`snd) . HashMap.toList)
-
--- FIXME: handle missing states case
-diffV :: (Eq s, Hashable s) => V s -> V s -> TD_Number
-diffV tgt src = sum (HashMap.intersectionWith (\a b -> abs (a - b)) tgt src)
 

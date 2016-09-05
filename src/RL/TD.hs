@@ -16,6 +16,26 @@ import RL.Imports
 import RL.TD.Class
 import RL.TD.Alg
 
+type Q s a = HashMap s (HashMap a TD_Number)
+
+type V s = HashMap s TD_Number
+
+emptyQ :: Q s a
+emptyQ = HashMap.empty
+
+q2v :: Q s a -> V s
+q2v = HashMap.map (snd . maximumBy (compare`on`snd) . HashMap.toList)
+
+-- FIXME: handle missing states case
+diffV :: (Eq s, Hashable s) => V s -> V s -> TD_Number
+diffV tgt src = sum (HashMap.intersectionWith (\a b -> abs (a - b)) tgt src)
+
+
+
+
+class (TD_Problem pr s a) => TD_Driver pr m s a | pr -> m where
+  td_trace :: (MonadRnd g m) => pr -> s -> a -> Q s a -> m ()
+
 -- FIXME: re-implement Get-Actions case more carefully
 runAlg :: forall pr s a m g . (Show s, TD_Driver pr m s a, MonadRnd g m)
   => (pr -> FT (TD_AlgF s a) (StateT (Q s a) m) s)
