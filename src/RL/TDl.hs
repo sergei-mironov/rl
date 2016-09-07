@@ -7,131 +7,57 @@ import qualified Data.HashSet as HashSet
 
 import Control.Monad.Trans.Free.Church
 import RL.Imports
-import RL.TD.Class
-
--- data TDl_AlgF s a next =
---     InitialState (s -> next)
---   | Query_Q s ([(a,TD_Number)] -> next)
---   | Query_Z ([(s,a,TD_Number)] -> next)
---   | Modify_Q s a (TD_Number -> TD_Number) next
---   | Modify_Z s a (TD_Number -> TD_Number) next
---   deriving(Functor)
-
--- makeFree ''TDl_AlgF
+import RL.TD.Types
+import RL.TD.Class (eps_greedy_action)
 
 data TDl_Opts = TDl_Opts {
     o_alpha :: TD_Number
   , o_gamma :: TD_Number
   , o_eps :: TD_Number
+  , o_q0 :: TD_Number
+  , o_lambda :: TD_Number
   } deriving (Show)
 
-type Q s a = HashMap s (HashMap a TD_Number)
-type Z s a = HashMap s (HashMap a TD_Number)
+type Q s a = M s a
+type Z s a = M s a
 
 data TDl_State s a = TDl_State {
-    tdl_q :: Q s a
-  , tdl_z :: Z s a
+    _tdl_q :: Q s a
+  , _tdl_z :: Z s a
   }
 
-initialState :: TDl_State s a
-initialState = undefined
+$(makeLenses ''TDl_State)
 
-getQ :: (MonadState (TDl_State s a) m) => s -> a -> m TD_Number
-getQ s a = undefined
+initialState :: TD_Number -> TDl_State s a
+initialState x0 = TDl_State (initM x0) (initM 0)
 
-queryQ :: (MonadState (TDl_State s a) m) => s -> m [(a,TD_Number)]
-queryQ s = undefined
+class (Eq s, Hashable s, Show s, Eq a, Hashable a, Enum a, Bounded a, Show a) =>
+    TDl_Problem pr m s a | pr -> m, pr -> s , pr -> a where
+  td_is_terminal :: pr -> s -> Bool
+  td_greedy :: pr -> Bool -> a -> a
+  td_transition :: pr -> s -> a -> TDl_State s a -> m (s,TD_Number)
 
-modifyQ :: (MonadState (TDl_State s a) m) => s -> a -> (TD_Number -> TD_Number) -> m ()
-modifyQ s a f = undefined
+queryQ s = get_s s <$> use tdl_q
+modifyQ s a f = tdl_q %= modify_s_a s a f
+listZ f = (list <$> use tdl_z) >>= mapM_ f
+modifyZ s a f = tdl_z %= modify_s_a s a f
+action pr s eps = queryQ s >>= eps_greedy_action eps (td_greedy pr)
+transition pr s a = get >>= lift . td_transition pr s a
 
-
-getZ :: (MonadState (TDl_State s a) m) => s -> a -> m TD_Number
-getZ s a = undefined
-
-queryZ :: (MonadState (TDl_State s a) m) => m [(s,a,TD_Number)]
-queryZ = undefined
-
-modifyZ :: (MonadState (TDl_State s a) m) => s -> a -> (TD_Number -> TD_Number) -> m ()
-modifyZ s a d = undefined
-
-class (TD_Problem pr s a) => TDl_Driver pr m s a | pr -> m where
-  td_trace :: (MonadRnd g m) => pr -> s -> a -> Q s a -> m ()
-
--- FIXME: make lambda-related logic a runner task
-sarsa_lambda :: (MonadRnd g m, TDl_Driver pr m s a)
-  => TD_Number -> s -> TDl_Opts -> pr -> m s
-
-sarsa_lambda lambda s0 TDl_Opts{..} pr = do
-  flip evalStateT initialState $ do
-    (a0,q0) <- queryQ s0 >>= eps_action o_eps pr
+sarsa_lambda :: (MonadRnd g m, TDl_Problem pr m s a)
+  => s -> TDl_Opts -> pr -> m s
+sarsa_lambda s0 TDl_Opts{..} pr = do
+  flip evalStateT (initialState o_q0) $ do
+    (a0,q0) <- action pr s0 o_eps
     fst <$> do
       return (s0,(a0,q0)) >>= do
-      iterateUntilM (td_is_terminal pr . fst) $ \(s,(a,qsa)) -> do
-        s' <- pure $ td_transition pr s a
-        r <- pure $ td_reward pr s a s'
-        (a',qs'a') <- eps_action o_eps pr =<< queryQ s'
-        delta <- pure $ r + o_gamma * qs'a' - qsa
+      iterateUntilM (td_is_terminal pr . fst) $ \(s,(a,q)) -> do
+        (s',r) <- transition pr s a
+        (a',q') <- action pr s' o_eps
+        delta <- pure $ r + o_gamma * q' - q
         modifyZ s a (+1)
-        zs <- queryZ
-        forM_ zs $ \(s,a,z) -> do
+        listZ $ \(s,a,z) -> do
           modifyQ s a (\q -> q + o_alpha * delta * z)
-          modifyZ s a (const $ o_gamma * lambda * z)
-        return (s',(a',qs'a'))
-
-
-
--- -- FIXME: re-implement Get-Actions case more carefully
--- runAlg :: forall pr s a m g . (Show s, TD_Driver pr m s a, MonadRnd g m)
---   => (pr -> FT (TDl_AlgF s a) (StateT (Q s a) m) s)
---   -> s
---   -> TD_Number
---   -> Q s a
---   -> pr
---   -> m (Q s a)
--- runAlg alg s0 qsa0 q0 pr = flip execStateT q0 $ iterT go (alg pr) where
-
---   qs0 :: HashMap a TD_Number
---   qs0 = HashMap.fromList [(a,qsa0) | a <- [minBound .. maxBound]]
-
---   lookupAQ d s m =
---     case HashMap.lookup s m of
---       Just x -> x`HashMap.union`d
---       Nothing -> d
-
---   lookupQ d s m =
---     case HashMap.lookup s m of
---       Just x -> x
---       Nothing -> d
-
---   go :: TDl_AlgF s a (StateT (Q s a) m s) -> StateT (Q s a) m s
---   go = \case
-
---     InitialState next -> do
---       next s0
-
---     Query_Q s next -> do
---       get >>= \q ->
---         case HashMap.lookup s q of
---           Nothing -> next (HashMap.toList qs0)
---           Just qs -> next (HashMap.toList qs)
-
---     Modify_Q s a f next -> do
---       saq <- get
---       -- traceM saq
---       aq <- pure $ lookupAQ qs0 s saq
---       q <- pure $ lookupQ qsa0 a aq
---       aq' <- pure $ HashMap.insert a (f q) aq
---       saq' <- pure $ HashMap.insert s aq' saq
---       put saq'
---       -- traceM saq'
---       lift (td_trace pr s a saq')
---       next
-
---     Query_Z next -> do
---       undefined
-
---     Modify_Z s a f next -> do
---       undefined
-
+          modifyZ s a (const $ o_gamma * o_lambda * z)
+        return (s',(a',q'))
 
