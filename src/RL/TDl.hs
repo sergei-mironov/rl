@@ -43,6 +43,7 @@ listZ f = (list <$> use tdl_z) >>= mapM_ f
 modifyZ s a f = tdl_z %= modify_s_a s a f
 action pr s eps = queryQ s >>= eps_greedy_action eps (td_greedy pr)
 transition pr s a = get >>= lift . td_transition pr s a
+loopM s0 f m = iterateUntilM f m s0
 
 sarsa_lambda :: (MonadRnd g m, TDl_Problem pr m s a)
   => s -> TDl_Opts -> pr -> m s
@@ -50,8 +51,7 @@ sarsa_lambda s0 TDl_Opts{..} pr = do
   flip evalStateT (initialState o_q0) $ do
     (a0,q0) <- action pr s0 o_eps
     fst <$> do
-      return (s0,(a0,q0)) >>= do
-      iterateUntilM (td_is_terminal pr . fst) $ \(s,(a,q)) -> do
+      loopM (s0,(a0,q0)) (not . td_is_terminal pr . fst) $ \(s,(a,q)) -> do
         (s',r) <- transition pr s a
         (a',q') <- action pr s' o_eps
         delta <- pure $ r + o_gamma * q' - q

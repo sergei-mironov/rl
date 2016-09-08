@@ -1,96 +1,56 @@
-{-# LANGUAGE DeriveFunctor, DeriveAnyClass #-}
-module RL.TD (
-    module RL.TD
-  , module RL.TD.Class
-  , module RL.TD.Alg
-  ) where
+{-# LANGUAGE DeriveFunctor #-}
+module RL.TD where
 
-import qualified Data.List as List
-import qualified Data.HashMap.Strict as HashMap
-import qualified Data.HashMap.Binary as HashMap
-import qualified Data.HashSet as HashSet
-
-import Control.Monad.Trans.Free.Church
+import Data.HashMap.Strict as HashMap
+import Control.Monad.Loops
 
 import RL.Imports
-import RL.TD.Class
-import RL.TD.Alg
+import RL.TD.Class (eps_greedy_action)
+import RL.TD.Types
 
-type Q s a = HashMap s (HashMap a TD_Number)
+data Q_Opts = Q_Opts {
+    o_alpha :: TD_Number
+  , o_gamma :: TD_Number
+  , o_eps :: TD_Number
+} deriving (Show)
 
-type V s = HashMap s TD_Number
+defaultOpts = Q_Opts {
+    o_alpha = 0.1
+  , o_gamma = 0.5
+  , o_eps = 0.3
+  }
 
-emptyQ :: Q s a
-emptyQ = HashMap.empty
+type Q s a = M s a
 
-q2v :: Q s a -> V s
-q2v = HashMap.map (snd . maximumBy (compare`on`snd) . HashMap.toList)
+class (Eq s, Hashable s, Show s, Eq a, Hashable a, Enum a, Bounded a, Show a) =>
+    TD_Problem pr m s a | pr -> m, pr -> s , pr -> a where
+  td_is_terminal :: pr -> s -> Bool
+  td_greedy :: pr -> Bool -> a -> a
+  td_transition :: pr -> s -> a -> Q s a -> m (s,TD_Number)
 
--- FIXME: handle missing states case
-diffV :: (Eq s, Hashable s) => V s -> V s -> TD_Number
-diffV tgt src = sum (HashMap.intersectionWith (\a b -> abs (a - b)) tgt src)
+queryQ s = HashMap.toList <$> get_s s <$> get
+modifyQ s a f = modify (modify_s_a s a f)
+action pr s eps = (get_s s <$> get) >>= eps_greedy_action eps (td_greedy pr)
+transition pr s a = get >>= lift . td_transition pr s a
+loopM s0 f m = iterateUntilM f m s0
 
+-- | Q-Learning algorithm
+qlearn :: (MonadRnd g m, TD_Problem pr m s a) => Q_Opts -> Q s a -> s -> pr -> m (s, Q s a)
+qlearn Q_Opts{..} q0 s0 pr = do
+  flip runStateT q0 $ do
+    loopM s0 (not . td_is_terminal pr) $ \s -> do
+      (a,_) <- action pr s o_eps
+      (s',r) <- transition pr s a
+      max_qs' <- snd . maximumBy (compare`on`snd) <$> queryQ s'
+      modifyQ s a $ \q -> q + o_alpha * (r + o_gamma * max_qs' - q)
+      return s'
 
-
-
-class (TD_Problem pr s a) => TD_Driver pr m s a | pr -> m where
-  td_trace :: (MonadRnd g m) => pr -> s -> a -> Q s a -> m ()
-
--- FIXME: re-implement Get-Actions case more carefully
-runAlg :: forall pr s a m g . (Show s, TD_Driver pr m s a, MonadRnd g m)
-  => (pr -> FT (TD_AlgF s a) (StateT (Q s a) m) s)
-  -> s
-  -> TD_Number
-  -> Q s a
-  -> pr
-  -> m (Q s a)
-runAlg alg s0 qsa0 q0 pr = flip execStateT q0 $ iterT go (alg pr) where
-
-  qs0 :: HashMap a TD_Number
-  qs0 = HashMap.fromList [(a,qsa0) | a <- [minBound .. maxBound]]
-
-
-  getDef d s m =
-    case HashMap.lookup s m of
-      Just x -> x`HashMap.union`d
-      Nothing -> d
-
-  getDef2 d s m =
-    case HashMap.lookup s m of
-      Just x -> x
-      Nothing -> d
-
-  go :: TD_AlgF s a (StateT (Q s a) m s) -> StateT (Q s a) m s
-  go (InitialState next) = next s0
-  go (Query_Q s next) = do
-    get >>= \q ->
-      case HashMap.lookup s q of
-        Nothing -> next (HashMap.toList qs0)
-        Just qs -> next (HashMap.toList qs)
-  go (Modify_Q s a f next) = do
-
-    saq <- get
-    -- traceM saq
-    aq <- pure $ getDef qs0 s saq
-    q <- pure $ getDef2 qsa0 a aq
-    aq' <- pure $ HashMap.insert a (f q) aq
-    saq' <- pure $ HashMap.insert s aq' saq
-    put saq'
-    -- traceM saq'
-    lift (td_trace pr s a saq')
-    next
-
-    -- let qs0' = HashMap.insert a (f qsa0) qs0
-    -- get >>= traceM
-    -- modify $ HashMap.insertWith (const . HashMap.insertWith (const . f) a qsa0) s qs0'
-    -- get >>= traceM
-    -- get >>= lift . td_trace pr s a
-    -- lift (td_trace pr s a saq')
-    -- next
-
-qexec o = runAlg (qexecF o)
-qlearn o = runAlg (qlearnF o)
-
--- test :: (MonadRnd g m, TD_Problem s a) => s -> m s
--- test s0 = runAlg s0 (qexec defaultOpts)
+-- | Execute Q-actions without learning
+qexec :: (MonadRnd g m, TD_Problem pr m s a) => Q_Opts -> Q s a -> s -> pr -> m s
+qexec Q_Opts{..} q0 s0 pr = do
+  flip evalStateT q0 $ do
+  loopM s0 (not . td_is_terminal pr) $ \s -> do
+    a <- fst . maximumBy (compare`on`snd) <$> queryQ s
+    (s',_) <- transition pr s a
+    return s'
 

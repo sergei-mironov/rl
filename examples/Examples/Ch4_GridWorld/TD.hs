@@ -7,6 +7,7 @@ import qualified Prelude
 
 import RL.Types hiding (Q, q2v)
 import RL.Imports
+import RL.TD.Types as TD
 import RL.TD as TD
 
 import Examples.Ch4_GridWorld.Base(GW(..), Point, Action)
@@ -19,13 +20,11 @@ data TD_GW m = TD_GW {
   }
 
 instance TD_Problem (TD_GW m) Point Action where
-  td_reward TD_GW{..} s1 a s2 = -1
   td_is_terminal TD_GW{..} p = p `Set.member` (gw_exits gw_base)
-  td_mark_best TD_GW{..} best = id
-  td_transition TD_GW{..} s a = fst $ GW.transition gw_base s a
-
-instance TD_Driver (TD_GW m) m Point Action where
-  td_trace = gw_trace
+  td_greedy TD_GW{..} best = id
+  td_transition TD_GW{..} s a q = do
+    gw_trace s a q
+    return (fst $ GW.transition gw_base s a, -1)
 
 sv2v :: (Hashable s, Eq s) => StateVal TD_Number s -> V s
 sv2v sv = HashMap.fromList $ Map.toList $ v_map sv
