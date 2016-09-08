@@ -1,0 +1,4 @@
+dist/*
+.*
+*.dat
+*.gnuplot
