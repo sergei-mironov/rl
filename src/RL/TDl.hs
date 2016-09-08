@@ -36,11 +36,12 @@ class (Eq s, Hashable s, Show s, Eq a, Hashable a, Enum a, Bounded a, Show a) =>
   td_is_terminal :: pr -> s -> Bool
   td_greedy :: pr -> Bool -> a -> a
   td_transition :: pr -> s -> a -> TDl_State s a -> m (s,TD_Number)
+  td_modify :: pr -> s -> a -> TDl_State s a  -> m ()
 
-queryQ s = get_s s <$> use tdl_q
-modifyQ s a f = tdl_q %= modify_s_a s a f
-listZ f = (list <$> use tdl_z) >>= mapM_ f
-modifyZ s a f = tdl_z %= modify_s_a s a f
+queryQ s = HashMap.toList <$> get_s s <$> use tdl_q
+modifyQ pr s a f = tdl_q %= modify_s_a s a f
+listZ pr s a f = (list <$> use tdl_z) >>= mapM_ f >> get >>= lift . td_modify pr s a
+modifyZ pr s a f = tdl_z %= modify_s_a s a f
 action pr s eps = queryQ s >>= eps_greedy_action eps (td_greedy pr)
 transition pr s a = get >>= lift . td_transition pr s a
 loopM s0 f m = iterateUntilM (not . f) m s0
@@ -55,9 +56,9 @@ sarsa_lambda s0 TDl_Opts{..} pr = do
         (s',r) <- transition pr s a
         (a',q') <- action pr s' o_eps
         delta <- pure $ r + o_gamma * q' - q
-        modifyZ s a (+1)
-        listZ $ \(s,a,z) -> do
-          modifyQ s a (\q -> q + o_alpha * delta * z)
-          modifyZ s a (const $ o_gamma * o_lambda * z)
+        modifyZ pr s a (+1)
+        listZ pr s a $ \(s,a,z) -> do
+          modifyQ pr s a (\q -> q + o_alpha * delta * z)
+          modifyZ pr s a (const $ o_gamma * o_lambda * z)
         return (s',(a',q'))
 

@@ -43,7 +43,7 @@ class (Monad m, Eq s, Hashable s, Show s, Eq a, Hashable a, Enum a, Bounded a, S
 
 queryQ s = HashMap.toList <$> get_s s <$> get
 modifyQ pr s a f = modify (modify_s_a s a f) >> get >>= lift . td_modify pr s a
-action pr s eps = (get_s s <$> get) >>= eps_greedy_action eps (td_greedy pr)
+action pr s eps = queryQ s >>= eps_greedy_action eps (td_greedy pr)
 transition pr s a = get >>= lift . td_transition pr s a
 loopM s0 f m = iterateUntilM (not . f) m s0
 

@@ -18,9 +18,8 @@ class (Eq a, Hashable a, Enum a, Bounded a, Show a) => TD_Action a
 -- | Return @eps@-greedy action for some state of problem @pr@. The state is
 -- described with assosiated list of weighted actions @as@
 eps_greedy_action :: (Eq a, MonadRnd g m)
-  => TD_Number -> (Bool -> a -> a) -> HashMap a TD_Number -> m (a,TD_Number)
-eps_greedy_action eps greedy as' = do
-  let as = HashMap.toList as'
+  => TD_Number -> (Bool -> a -> a) -> [(a,TD_Number)] -> m (a,TD_Number)
+eps_greedy_action eps greedy as = do
   let (abest, qbest) = maximumBy (compare`on`snd) as
   let arest = filter (\x -> fst x /= abest) as
   join $ Rnd.fromList [

@@ -26,7 +26,7 @@ aq0 :: (Eq a, Enum a, Hashable a, Bounded a)
 aq0 q0 = HashMap.fromList [(a,q0) | a <- [minBound .. maxBound]]
 
 get_s :: (Eq a, Enum a, Hashable a, Bounded a, Eq s, Hashable s)
-  => s -> M s a -> (HashMap a TD_Number)
+  => s -> M s a -> Layer a
 get_s s (M x0 sto) = maybe (aq0 x0) (`HashMap.union` (aq0 x0)) . HashMap.lookup s $ sto
 
 get_s_a :: (Eq a, Enum a, Hashable a, Bounded a, Eq s, Hashable s)
