@@ -7,7 +7,8 @@ import RL.Imports
 
 type TD_Number = Double
 
-type Storage s a = HashMap s (HashMap a TD_Number)
+type Layer a = HashMap a TD_Number
+type Storage s a = HashMap s (Layer a)
 
 data M s a = M {
     x0 :: TD_Number
@@ -46,4 +47,7 @@ modify_s_a s a f q = put_s_a s a (f (get_s_a s a q)) q
 
 list :: M s a -> [(s,a,TD_Number)]
 list q = flip concatMap (HashMap.toList (sto q)) $ \(s,aq) -> flip map (HashMap.toList aq) $ \(a,q) -> (s,a,q)
+
+foldMap_s :: (Eq a, Bounded a, Enum a, Hashable a, Monoid acc) => ((s,Layer a) -> acc) -> M s a -> acc
+foldMap_s f (M x0 sto) = foldMap (f . (id *** (`HashMap.union`(aq0 x0)))) (HashMap.toList sto)
 

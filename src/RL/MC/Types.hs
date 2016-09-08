@@ -25,14 +25,6 @@ import Control.Monad.Rnd as RL
 import RL.DP (DP_Problem(..), DP_Policy(..))
 import qualified RL.DP as DP
 
-{-
-  ____ _
- / ___| | __ _ ___ ___  ___  ___
-| |   | |/ _` / __/ __|/ _ \/ __|
-| |___| | (_| \__ \__ \  __/\__ \
- \____|_|\__,_|___/___/\___||___/
--}
-
 class (Fractional num, Ord s, Ord a, Ord num, Real num) => MC_Problem num pr s a | pr -> s , pr -> a where
   mc_state_nonterm :: (RandomGen g) => pr num -> g -> (s,g)
   mc_actions :: pr num -> s -> Set a
@@ -74,15 +66,6 @@ instance (DP_Problem num pr s a, DP_Policy num p pr s a) => MC_Policy num (MC a 
       False -> runRnd $ RL.fromList $ Set.toList $ rlp_action p pr s
 
 instance (DP_Policy num p pr s a, Show num, Show a, Show s, Show p, Show (pr num)) => MC_Policy_Show num (MC a s pr) s a p
--}
-
-{-
- _____
-|_   _|   _ _ __   ___  ___
-  | || | | | '_ \ / _ \/ __|
-  | || |_| | |_) |  __/\__ \
-  |_| \__, | .__/ \___||___/
-      |___/|_|
 -}
 
 newtype Episode s a = Episode {

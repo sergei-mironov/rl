@@ -10,7 +10,7 @@ import RL.Imports
 
 import Examples.Ch4_GridWorld.Base
 import Examples.Ch4_GridWorld.DP
-import Examples.Ch4_GridWorld.MC
+-- import Examples.Ch4_GridWorld.MC
 import Examples.Ch4_GridWorld.TD
 
 gw :: GW Rational

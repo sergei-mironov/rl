@@ -15,16 +15,6 @@ import qualified RL.DP as DP
 
 import RL.MC.Types
 
-{-
-    _    _
-   / \  | | __ _
-  / _ \ | |/ _` |
- / ___ \| | (_| |
-/_/   \_\_|\__, |
-           |___/
--}
-
-
 -- | Builds an episode which is a list of transitions, terminal transition is near head
 episode :: (MonadRnd g m , MC_Policy num pr s a p, MonadIO m, Show s, Show a)
   => pr num -> s -> p -> m (Episode s a)

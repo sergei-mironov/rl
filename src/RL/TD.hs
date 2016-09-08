@@ -21,12 +21,24 @@ defaultOpts = Q_Opts {
   }
 
 type Q s a = M s a
+type V s = HashMap s TD_Number
+
+emptyQ :: TD_Number -> Q s a
+emptyQ = initM
+
+q2v :: (Bounded a, Enum a, Eq a, Hashable a, Eq s, Hashable s) => Q s a -> V s
+q2v = foldMap_s (\(s,l) -> HashMap.singleton s (maximum l))
+
+-- FIXME: handle missing states case
+diffV :: (Eq s, Hashable s) => V s -> V s -> TD_Number
+diffV tgt src = sum (HashMap.intersectionWith (\a b -> abs (a - b)) tgt src)
 
 class (Eq s, Hashable s, Show s, Eq a, Hashable a, Enum a, Bounded a, Show a) =>
     TD_Problem pr m s a | pr -> m, pr -> s , pr -> a where
   td_is_terminal :: pr -> s -> Bool
   td_greedy :: pr -> Bool -> a -> a
-  td_transition :: pr -> s -> a -> Q s a -> m (s,TD_Number)
+  td_reward :: pr -> s -> a -> s -> TD_Number
+  td_transition :: pr -> s -> a -> Q s a -> m s
 
 queryQ s = HashMap.toList <$> get_s s <$> get
 modifyQ s a f = modify (modify_s_a s a f)
@@ -40,7 +52,8 @@ qlearn Q_Opts{..} q0 s0 pr = do
   flip runStateT q0 $ do
     loopM s0 (not . td_is_terminal pr) $ \s -> do
       (a,_) <- action pr s o_eps
-      (s',r) <- transition pr s a
+      s' <- transition pr s a
+      r <- pure $ td_reward pr s a s'
       max_qs' <- snd . maximumBy (compare`on`snd) <$> queryQ s'
       modifyQ s a $ \q -> q + o_alpha * (r + o_gamma * max_qs' - q)
       return s'
@@ -51,6 +64,6 @@ qexec Q_Opts{..} q0 s0 pr = do
   flip evalStateT q0 $ do
   loopM s0 (not . td_is_terminal pr) $ \s -> do
     a <- fst . maximumBy (compare`on`snd) <$> queryQ s
-    (s',_) <- transition pr s a
+    s' <- transition pr s a
     return s'
 

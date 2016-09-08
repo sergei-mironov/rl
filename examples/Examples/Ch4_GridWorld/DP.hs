@@ -8,7 +8,7 @@ import RL.Types
 import RL.Imports
 import RL.DP
 
-import Examples.Ch4_GridWorld.Base
+import Examples.Ch4_GridWorld.Base as GW
 
 
 instance (Fractional num, Ord num) => DP_Problem num GW (Int,Int) Action where
@@ -20,21 +20,8 @@ instance (Fractional num, Ord num) => DP_Problem num GW (Int,Int) Action where
       True -> Set.empty
       False -> Set.fromList [minBound..maxBound]
 
-  rl_transitions (GW (sx,sy) _) (x,y) a =
-    let
-      check (x',y') =
-        if x' >= 0 && x' < sx && y' >= 0 && y' < sy then
-          (x',y')
-        else
-          (x,y)
-    in
-    Set.fromList [(
-        case a of
-           L -> check (x-1,y)
-           R -> check (x+1,y)
-           U -> check (x,y-1)
-           D -> check (x,y+1)
-        , 1%1)]
+  rl_transitions gw@(GW (sx,sy) _) s@(x,y) a =
+    Set.fromList [(GW.transition gw s a,1%1)]
 
   rl_reward (GW (sx,sy) _) s a s' = -1
 

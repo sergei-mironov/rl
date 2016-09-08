@@ -72,7 +72,6 @@ showGenericPolicy pr@(GW (sx,sy) _) p@GenericPolicy{..} = liftIO $ do
           printf "% 4s " (showActions acts)
     printf "\n"
 
-
 -- FIXME: remove recursion
 arbitraryState :: MonadRnd g m => GW t -> m Point
 arbitraryState gw@GW{..} = do
@@ -84,7 +83,7 @@ arbitraryState gw@GW{..} = do
       False -> return (x,y)
 
 
-transition :: GW num -> Point -> Action -> (Point, Bool)
+transition :: GW num -> Point -> Action -> Point
 transition (GW (sx,sy) exits) (x,y) a =
   let
     check (x',y') =
@@ -93,15 +92,14 @@ transition (GW (sx,sy) exits) (x,y) a =
       else
         (x,y)
 
-    p' = case a of
-               L -> check (x-1,y)
-               R -> check (x+1,y)
-               U -> check (x,y-1)
-               D -> check (x,y+1)
-    term = p' `member` exits
   in
-  (p',term)
+  case a of
+    L -> check (x-1,y)
+    R -> check (x+1,y)
+    U -> check (x,y-1)
+    D -> check (x,y+1)
 
+isTerminal GW{..} p = p `Set.member` gw_exits
 
 withLearnPlot cnt f = do
   d <- newData "learnRate"
