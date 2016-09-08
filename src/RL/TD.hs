@@ -44,7 +44,7 @@ queryQ s = HashMap.toList <$> get_s s <$> get
 modifyQ s a f = modify (modify_s_a s a f)
 action pr s eps = (get_s s <$> get) >>= eps_greedy_action eps (td_greedy pr)
 transition pr s a = get >>= lift . td_transition pr s a
-loopM s0 f m = iterateUntilM f m s0
+loopM s0 f m = iterateUntilM (not . f) m s0
 
 -- | Q-Learning algorithm
 qlearn :: (MonadRnd g m, TD_Problem pr m s a) => Q_Opts -> Q s a -> s -> pr -> m (s, Q s a)

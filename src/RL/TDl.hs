@@ -43,7 +43,7 @@ listZ f = (list <$> use tdl_z) >>= mapM_ f
 modifyZ s a f = tdl_z %= modify_s_a s a f
 action pr s eps = queryQ s >>= eps_greedy_action eps (td_greedy pr)
 transition pr s a = get >>= lift . td_transition pr s a
-loopM s0 f m = iterateUntilM f m s0
+loopM s0 f m = iterateUntilM (not . f) m s0
 
 sarsa_lambda :: (MonadRnd g m, TDl_Problem pr m s a)
   => s -> TDl_Opts -> pr -> m s

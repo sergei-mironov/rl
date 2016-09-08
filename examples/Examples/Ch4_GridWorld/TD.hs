@@ -61,14 +61,16 @@ gw_iter_q gw =
         loop $ do
           s0 <- GW.arbitraryState gw
           q <- use st_q
+
           qlearn o q s0 $ TD_GW gw $ \s a q -> do
-            liftIO $ putStrLn $ show s <> "  " <> GW.showAction a
+            -- liftIO $ putStrLn $ show s <> "  " <> GW.showAction a
             i <- use st_i
             when (i >= cnt) $ do
               liftIO $ putStrLn $ "Exiting at " <> show i
               break ()
             st_q %= const q
             st_i %= (+1)
+
           (q',i) <- get
           liftIO $ putStrLn $ "Loop i = " <> show i
           liftIO $ showV gw (q2v q')
