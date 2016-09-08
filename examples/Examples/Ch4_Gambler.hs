@@ -5,7 +5,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Ch_4_Gambler where
+module Examples.Ch4_Gambler where
 
 import Control.Applicative
 import Control.Monad
