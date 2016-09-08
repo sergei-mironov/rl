@@ -13,7 +13,7 @@ type Storage s a = HashMap s (Layer a)
 data M s a = M {
     x0 :: TD_Number
   , sto :: Storage s a
-  }
+  } deriving(Show)
 
 initM :: TD_Number -> M s a
 initM x = M x HashMap.empty
@@ -50,4 +50,8 @@ list q = flip concatMap (HashMap.toList (sto q)) $ \(s,aq) -> flip map (HashMap.
 
 foldMap_s :: (Eq a, Bounded a, Enum a, Hashable a, Monoid acc) => ((s,Layer a) -> acc) -> M s a -> acc
 foldMap_s f (M x0 sto) = foldMap (f . (id *** (`HashMap.union`(aq0 x0)))) (HashMap.toList sto)
+
+fold_s :: (Eq a, Bounded a, Enum a, Hashable a, Monoid acc) => (acc -> (s,Layer a) -> acc) -> acc -> M s a -> acc
+fold_s f acc0 (M x0 sto) = foldl' go acc0 (HashMap.toList sto) where
+  go acc (s,l) = f acc (s,l`HashMap.union`(aq0 x0))
 

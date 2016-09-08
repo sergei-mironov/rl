@@ -23,9 +23,8 @@ instance (Monad m) => TD_Problem (TD_GW m) m Point Action where
   td_is_terminal TD_GW{..} p = GW.isTerminal gw p
   td_greedy TD_GW{..} best = id
   td_reward TD_GW{..} s a s' = -1
-  td_transition TD_GW{..} s a q = do
-    gw_trace s a q
-    return (GW.transition gw s a)
+  td_transition TD_GW{..} s a q = return (GW.transition gw s a)
+  td_modify TD_GW{..} s a q = gw_trace s a q
 
 sv2v :: (Hashable s, Eq s) => StateVal TD_Number s -> V s
 sv2v sv = HashMap.fromList $ Map.toList $ v_map sv
@@ -63,7 +62,6 @@ gw_iter_q gw =
           q <- use st_q
 
           qlearn o q s0 $ TD_GW gw $ \s a q -> do
-            liftIO $ putStrLn $ show s <> "  " <> GW.showAction a
             i <- use st_i
             when (i >= cnt) $ do
               liftIO $ putStrLn $ "Exiting at " <> show i

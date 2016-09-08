@@ -9,11 +9,11 @@ import RL.TD.Types
 class (Eq s, Hashable s, Show s) => TD_State s
 class (Eq a, Hashable a, Enum a, Bounded a, Show a) => TD_Action a
 
-class (TD_State s, TD_Action a) => TD_Problem pr s a | pr -> s , pr -> a where
-  td_reward :: pr -> s -> a -> s -> TD_Number
-  td_is_terminal :: pr -> s -> Bool
-  td_mark_best :: pr -> Bool -> a -> a
-  td_transition :: pr -> s -> a -> s
+-- class (TD_State s, TD_Action a) => TD_Problem pr s a | pr -> s , pr -> a where
+--   td_reward :: pr -> s -> a -> s -> TD_Number
+--   td_is_terminal :: pr -> s -> Bool
+--   td_mark_best :: pr -> Bool -> a -> a
+--   td_transition :: pr -> s -> a -> s
 
 -- | Return @eps@-greedy action for some state of problem @pr@. The state is
 -- described with assosiated list of weighted actions @as@
