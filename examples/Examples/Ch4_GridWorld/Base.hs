@@ -78,7 +78,7 @@ arbitraryState gw@GW{..} = do
     let (sx,sy) = gw_size
     x <- getRndR (0,sx-1)
     y <- getRndR (0,sy-1)
-    case (x,y) `member` gw_exits of
+    case isTerminal gw (x,y) of
       True -> arbitraryState gw
       False -> return (x,y)
 
@@ -91,7 +91,6 @@ transition (GW (sx,sy) exits) (x,y) a =
         (x',y')
       else
         (x,y)
-
   in
   case a of
     L -> check (x-1,y)
@@ -99,6 +98,7 @@ transition (GW (sx,sy) exits) (x,y) a =
     U -> check (x,y-1)
     D -> check (x,y+1)
 
+isTerminal :: GW num -> Point -> Bool
 isTerminal GW{..} p = p `Set.member` gw_exits
 
 withLearnPlot cnt f = do

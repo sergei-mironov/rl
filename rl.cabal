@@ -44,7 +44,8 @@ library
     mtl,
     MonadRandom,
     -- deprecate
-    break,
+    -- break,
+    transformers,
     monad-loops,
     lens,
     random,

@@ -1,7 +1,8 @@
 {-# LANGUAGE DeriveFunctor #-}
 module RL.TD where
 
-import Data.HashMap.Strict as HashMap
+import qualified Prelude
+import qualified Data.HashMap.Strict as HashMap
 import Control.Monad.Loops
 
 import RL.Imports
@@ -43,27 +44,32 @@ class (Eq s, Hashable s, Show s, Eq a, Hashable a, Enum a, Bounded a, Show a) =>
 queryQ s = HashMap.toList <$> get_s s <$> get
 modifyQ s a f = modify (modify_s_a s a f)
 action pr s eps = (get_s s <$> get) >>= eps_greedy_action eps (td_greedy pr)
-transition pr s a = get >>= lift . td_transition pr s a
-loopM s0 f m = iterateUntilM (not . f) m s0
+transition pr s a = get >>= lift . lift . td_transition pr s a
 
 -- | Q-Learning algorithm
 qlearn :: (MonadRnd g m, TD_Problem pr m s a) => Q_Opts -> Q s a -> s -> pr -> m (s, Q s a)
 qlearn Q_Opts{..} q0 s0 pr = do
   flip runStateT q0 $ do
-    loopM s0 (not . td_is_terminal pr) $ \s -> do
+    iter s0 $ \s -> do
       (a,_) <- action pr s o_eps
       s' <- transition pr s a
       r <- pure $ td_reward pr s a s'
       max_qs' <- snd . maximumBy (compare`on`snd) <$> queryQ s'
       modifyQ s a $ \q -> q + o_alpha * (r + o_gamma * max_qs' - q)
+
+      when (td_is_terminal pr s') $ do
+        break s'
+
       return s'
 
--- | Execute Q-actions without learning
+-- | Q-Executive algorithm. Actions are taken greedily, no learning is performed
 qexec :: (MonadRnd g m, TD_Problem pr m s a) => Q_Opts -> Q s a -> s -> pr -> m s
 qexec Q_Opts{..} q0 s0 pr = do
   flip evalStateT q0 $ do
-  loopM s0 (not . td_is_terminal pr) $ \s -> do
+  iter s0 $ \s -> do
     a <- fst . maximumBy (compare`on`snd) <$> queryQ s
     s' <- transition pr s a
+    when (td_is_terminal pr s') $ do
+      break s'
     return s'
 
