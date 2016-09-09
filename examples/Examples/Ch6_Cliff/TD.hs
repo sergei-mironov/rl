@@ -1,4 +1,4 @@
-module Examples.Ch6_Cliff.TD where
+module Examples.Ch6_Cliff.TD (cw_iter_q) where
 
 import qualified Prelude
 import qualified Data.HashMap.Strict as HashMap
@@ -20,6 +20,7 @@ instance (Monad m) => TD_Problem (TD_CW m) m Point Action where
   td_reward TD_CW{..} = cw_reward cw
   td_transition TD_CW{..} s a q = return (fst $ cw_transition cw s a)
   td_modify TD_CW{..} s a q = cw_trace s a q
+
 
 cw_iter_q :: CW -> IO ()
 cw_iter_q cw =
@@ -45,6 +46,7 @@ cw_iter_q cw =
     flip execStateT (q0,0) $ do
       loop $ do
         s0 <- pickState cw
+        i <- use st_i
         q <- use st_q
 
         (s',q') <-
@@ -53,8 +55,8 @@ cw_iter_q cw =
             when (i >= cnt) $ do
               break ()
 
-        i <- use st_i
         liftIO $ putStrLn $ "Loop i = " <> show i
-        liftIO $ showActionTable cw ......
+        liftIO $ showActionTable cw (HashMap.toList (q2v q'))
+        st_i %= const (i+1)
         st_q %= const q'
 

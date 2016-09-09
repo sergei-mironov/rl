@@ -29,6 +29,10 @@ get_s :: (Eq a, Enum a, Hashable a, Bounded a, Eq s, Hashable s)
   => s -> M s a -> Layer a
 get_s s (M x0 sto) = maybe (aq0 x0) (`HashMap.union` (aq0 x0)) . HashMap.lookup s $ sto
 
+layer_s_max :: (Eq a, Enum a, Hashable a, Bounded a)
+  => Layer a -> (a,TD_Number)
+layer_s_max = maximumBy (compare`on`snd) . HashMap.toList
+
 get_s_a :: (Eq a, Enum a, Hashable a, Bounded a, Eq s, Hashable s)
   => s -> a -> M s a -> TD_Number
 get_s_a s a (M x0 sto) = maybe x0 (maybe x0 id . HashMap.lookup a) . HashMap.lookup s $ sto

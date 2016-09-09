@@ -53,7 +53,7 @@ showActionTable pr@(CW (sx,sy)) at = liftIO $ do
     forM_ [0..sx-1] $ \x -> do
       case List.lookup (x,y) at of
         Nothing ->  do
-          printf "  ?   "
+          printf "% 4s " "?"
         Just (a,_) -> do
           printf "% 4s " (showAction a)
     printf "\n"
