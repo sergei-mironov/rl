@@ -61,7 +61,7 @@ gw_iter_q gw =
           s0 <- GW.arbitraryState gw
           q <- use st_q
 
-          qlearn o q s0 $ TD_GW gw $ \s a q -> do
+          q_learn o q s0 $ TD_GW gw $ \s a q -> do
             i <- use st_i
             when (i >= cnt) $ do
               liftIO $ putStrLn $ "Exiting at " <> show i

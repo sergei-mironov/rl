@@ -45,11 +45,10 @@ queryQ s = HashMap.toList <$> get_s s <$> get
 modifyQ pr s a f = modify (modify_s_a s a f) >> get >>= lift . td_modify pr s a
 action pr s eps = queryQ s >>= eps_greedy_action eps (td_greedy pr)
 transition pr s a = get >>= lift . td_transition pr s a
-loopM s0 f m = iterateUntilM (not . f) m s0
 
 -- | Q-Learning algorithm
-qlearn :: (MonadRnd g m, TD_Problem pr m s a) => Q_Opts -> Q s a -> s -> pr -> m (s, Q s a)
-qlearn Q_Opts{..} q0 s0 pr = do
+q_learn :: (MonadRnd g m, TD_Problem pr m s a) => Q_Opts -> Q s a -> s -> pr -> m (s, Q s a)
+q_learn Q_Opts{..} q0 s0 pr = do
   flip runStateT q0 $ do
   loopM s0 (not . td_is_terminal pr) $ \s -> do
     (a,_) <- action pr s o_eps
@@ -60,8 +59,8 @@ qlearn Q_Opts{..} q0 s0 pr = do
     return s'
 
 -- | Q-Executive algorithm. Actions are taken greedily, no learning is performed
-qexec :: (MonadRnd g m, TD_Problem pr m s a) => Q_Opts -> Q s a -> s -> pr -> m s
-qexec Q_Opts{..} q0 s0 pr = do
+q_exec :: (MonadRnd g m, TD_Problem pr m s a) => Q_Opts -> Q s a -> s -> pr -> m s
+q_exec Q_Opts{..} q0 s0 pr = do
   flip evalStateT q0 $ do
   loopM s0 (not . td_is_terminal pr) $ \s -> do
     a <- fst . maximumBy (compare`on`snd) <$> queryQ s

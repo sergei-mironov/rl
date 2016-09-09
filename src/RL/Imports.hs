@@ -96,3 +96,5 @@ traceM a = trace (ppShow a) (return ())
 trace' :: (Show a) => a -> b -> b
 trace' a b = trace (ppShow a) b
 
+loopM s0 f m = iterateUntilM (not . f) m s0
+
