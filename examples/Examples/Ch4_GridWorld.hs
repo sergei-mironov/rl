@@ -1,5 +1,9 @@
+module Examples.Ch4_GridWorld (
+    module Examples.Ch4_GridWorld
+  , module Examples.Ch4_GridWorld.DP
+  , module Examples.Ch4_GridWorld.TD
+  ) where
 
-module Examples.Ch4_GridWorld where
 
 import qualified Data.List as List
 import qualified Data.Map.Strict as Map
@@ -8,7 +12,7 @@ import qualified Data.Set as Set
 import RL.Types
 import RL.Imports
 
-import Examples.Ch4_GridWorld.Base
+import Examples.Ch4_GridWorld.Rules
 import Examples.Ch4_GridWorld.DP
 -- import Examples.Ch4_GridWorld.MC
 import Examples.Ch4_GridWorld.TD

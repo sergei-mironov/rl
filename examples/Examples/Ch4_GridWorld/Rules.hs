@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
-module Examples.Ch4_GridWorld.Base where
+module Examples.Ch4_GridWorld.Rules where
 
 import qualified Data.List as List
 import qualified Data.Map.Strict as Map
@@ -57,7 +57,7 @@ showGW (GW (sx,sy) _) lookup = liftIO $ do
           printf "  ?   "
     printf "\n"
 
-showGenericPolicy :: (MonadIO m, DP_Policy num (GenericPolicy Point Action) GW Point Action)
+showGenericPolicy :: (MonadIO m, DP_Policy (GW num) (GenericPolicy Point Action) Point Action num)
   => GW num
   -> GenericPolicy Point Action
   -> m ()

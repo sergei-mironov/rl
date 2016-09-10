@@ -28,28 +28,28 @@ import RL.Types as RL
  \____|_|\__,_|___/___/\___||___/
 -}
 
-zero_sate_values :: (DP_Problem num pr s a)
-  => pr num -> StateVal num s
+zero_sate_values :: (DP_Problem pr s a num)
+  => pr -> StateVal num s
 zero_sate_values pr =  StateVal $ Map.fromList $ map (\s -> (s,0.0)) (Set.toList $ rl_states pr)
 
 -- FIXME: Convert to fold-like style eventially
 -- | Dynamic Programming Problem. Parameters have the following meaning: @num@ -
 -- Type of Numbers; @pr@ - the problem; @s@ - State; @a@ - Action
-class (Ord s, Fractional num, Ord num) => DP_Problem num pr s a | pr -> s , pr -> a where
-  rl_states :: pr num -> Set s
-  rl_actions :: pr num -> s -> Set a
-  rl_transitions :: pr num -> s -> a -> Set (s, Probability)
-  rl_reward :: pr num -> s -> a -> s -> num
+class (Ord s, Fractional num, Ord num) => DP_Problem pr s a num | pr -> s, pr -> a, pr -> num where
+  rl_states :: pr -> Set s
+  rl_actions :: pr -> s -> Set a
+  rl_transitions :: pr -> s -> a -> Set (s, Probability)
+  rl_reward :: pr -> s -> a -> s -> num
   -- FIXME: think about splitting terminal and non-terminal states
-  rl_terminal_states :: pr num -> Set s
+  rl_terminal_states :: pr -> Set s
 
 -- | Dynamic Programming Policy. Parameters have same meaning as in DP_Problem,
 -- @p@ means the Policy
-class (DP_Problem num pr s a) => DP_Policy num p pr s a where
-  rlp_action :: p -> pr num -> s -> Set (a,Probability)
+class (DP_Problem pr s a num) => DP_Policy pr p s a num where
+  rlp_action :: p -> pr -> s -> Set (a,Probability)
 
 -- | For given state, probabilities for all possible action should sum up to 1
-invariant_probable_actions :: (DP_Problem num pr s a, Show s, Show a) => pr num -> Bool
+invariant_probable_actions :: (DP_Problem pr s a num, Show s, Show a) => pr -> Bool
 invariant_probable_actions pr =
   flip all (rl_states pr) $ \s ->
     flip all (rl_actions pr s) $ \a ->
@@ -58,7 +58,7 @@ invariant_probable_actions pr =
         x -> error $ "Total probability of state " ++ show s ++ " action " ++ show a ++ " sum up to " ++ show x
 
 -- | No action leads to unlisted state
-invariant_closed_transition :: (DP_Problem num pr s a, Show s, Show a) => pr num -> Bool
+invariant_closed_transition :: (DP_Problem pr s a num, Show s, Show a) => pr -> Bool
 invariant_closed_transition pr =
   flip all (rl_states pr) $ \s ->
     flip all (rl_actions pr s) $ \a ->
@@ -68,7 +68,7 @@ invariant_closed_transition pr =
           False -> error $ "State " ++ show s ++ ", action " ++ show a ++ " lead to invalid state " ++ show s'
 
 -- | Terminal states are dead ends and non-terminal states are not
-invariant_no_dead_states :: (DP_Problem num pr s a, Show s, Show a) => pr num -> Bool
+invariant_no_dead_states :: (DP_Problem pr s a num, Show s, Show a) => pr -> Bool
 invariant_no_dead_states pr =
   flip all (rl_states pr) $ \s ->
     case (member s (rl_terminal_states pr), Set.null (rl_actions pr s)) of
@@ -78,7 +78,7 @@ invariant_no_dead_states pr =
       (False,True) -> error $ "State " ++ show s ++ " is dead end"
 
 -- Terminals are valid states
-invariant_terminal :: (DP_Problem num pr s a, Show s, Show a) => pr num -> Bool
+invariant_terminal :: (DP_Problem pr s a num, Show s, Show a) => pr -> Bool
 invariant_terminal pr =
   flip all (rl_terminal_states pr) $ \st ->
     case Set.member st (rl_states pr) of
@@ -86,7 +86,7 @@ invariant_terminal pr =
       False -> error $ "State " ++ show st ++ " is not a valid state"
 
 -- Policy returns valid actions
-invariant_policy_actions :: (DP_Policy num p pr s a, Ord a, Show s, Show a) => p -> pr num -> Bool
+invariant_policy_actions :: (DP_Policy pr p s a num, Ord a, Show s, Show a) => p -> pr -> Bool
 invariant_policy_actions p pr =
   flip all (rl_states pr) $ \s ->
     flip all (rlp_action p pr s) $ \(a, prob) ->
@@ -95,7 +95,7 @@ invariant_policy_actions p pr =
         False -> error $ "Policy from state " ++ show s ++ " leads to invalid action " ++ show a
 
 -- Policy return valid probabilities
-invariant_policy_prob :: (DP_Policy num p pr s a, Ord a, Show s, Show a) => p -> pr num -> Bool
+invariant_policy_prob :: (DP_Policy pr p s a num, Ord a, Show s, Show a) => p -> pr -> Bool
 invariant_policy_prob p pr =
   flip all (rl_states pr) $ \s ->
     let
@@ -106,7 +106,7 @@ invariant_policy_prob p pr =
       0 | null as -> True
       x -> error $ "Policy state " ++ show s ++ " probabilities sum up to " ++ show x
 
-invariant :: (DP_Problem num pr s a, Show s, Show a, Ord a) => pr num -> Bool
+invariant :: (DP_Problem pr s a num, Show s, Show a, Ord a) => pr -> Bool
 invariant pr = all ($ pr) [
     invariant_probable_actions
   , invariant_closed_transition
@@ -116,13 +116,13 @@ invariant pr = all ($ pr) [
   , invariant_no_dead_states
   ]
 
-policy_eq :: (Eq a, DP_Policy num p1 pr s a, DP_Policy num p2 pr s a) => pr num -> p1 -> p2 -> Bool
+policy_eq :: (Eq a, DP_Policy pr p1 s a num, DP_Policy pr p2 s a num) => pr -> p1 -> p2 -> Bool
 policy_eq pr p1 p2 = all (\s -> (rlp_action p1 pr s) == (rlp_action p2 pr s)) (rl_states pr)
 
-instance (DP_Problem num pr s a) => DP_Policy num (GenericPolicy s a) pr s a where
+instance (DP_Problem pr s a num) => DP_Policy pr (GenericPolicy s a) s a num where
   rlp_action GenericPolicy{..} _ s = _p_map ! s
 
-uniformGenericPolicy :: (Ord a, DP_Problem num pr s a) => pr num -> GenericPolicy s a
+uniformGenericPolicy :: (Ord a, DP_Problem pr s a num) => pr -> GenericPolicy s a
 uniformGenericPolicy pr = GenericPolicy{..} where
   _p_map = Map.fromList $ flip map (Set.toList (rl_states pr)) $ \s ->
     let
@@ -177,8 +177,8 @@ initEvalState StateVal{..} = EvalState 0 v_map v_map 0
 
 -- | Iterative policy evaluation algorithm
 -- Figure 4.1, pg.86.
-policy_eval :: (DP_Policy num p pr s a, MonadIO m)
-  => pr num -> p -> EvalOpts num s a -> StateVal num s -> m (StateVal num s)
+policy_eval :: (DP_Policy pr p s a num, MonadIO m)
+  => pr -> p -> EvalOpts num s a -> StateVal num s -> m (StateVal num s)
 policy_eval pr p EvalOpts{..} v = do
   let sum l f = List.sum <$> forM (Set.toList l) f
 
@@ -212,14 +212,14 @@ policy_eval pr p EvalOpts{..} v = do
 
       es_iter %= (+1)
 
-policy_action_value :: (DP_Problem num pr s a) => pr num -> s  -> a -> EvalOpts num s a -> StateVal num s -> num
+policy_action_value :: (DP_Problem pr s a num) => pr -> s  -> a -> EvalOpts num s a -> StateVal num s -> num
 policy_action_value pr s a EvalOpts{..} StateVal{..} =
   List.sum $
   flip map (Set.toList $ rl_transitions pr s a) $ \(s', fromRational -> p) ->
     p * ((rl_reward pr s a s') + eo_gamma * (v_map ! s'))
 
-policy_improve :: (DP_Problem num pr s a, MonadIO m, Ord a)
-  => pr num -> EvalOpts num s a -> StateVal num s -> m (GenericPolicy s a)
+policy_improve :: (DP_Problem pr s a num, MonadIO m, Ord a)
+  => pr -> EvalOpts num s a -> StateVal num s -> m (GenericPolicy s a)
 policy_improve pr eo@EvalOpts{..} v@StateVal{..} = do
   let sum l f = List.sum <$> forM (Set.toList l) f
 
@@ -250,8 +250,8 @@ policy_improve pr eo@EvalOpts{..} v@StateVal{..} = do
         modify $ Map.insert s (Set.map (\a -> (a,1%nmax)) maxa)
 
 
-policy_iteraton_step :: (DP_Policy num p pr s a, MonadIO m, Ord a)
-  => pr num -> p -> StateVal num s -> EvalOpts num s a -> m (StateVal num s, GenericPolicy s a)
+policy_iteraton_step :: (DP_Policy pr p s a num, MonadIO m, Ord a)
+  => pr -> p -> StateVal num s -> EvalOpts num s a -> m (StateVal num s, GenericPolicy s a)
 policy_iteraton_step pr p v eo = do
   v' <- policy_eval pr p eo v
   p' <- policy_improve pr eo v'
@@ -259,15 +259,15 @@ policy_iteraton_step pr p v eo = do
 
 data PolicyContainer num p s a = APolicy p | GPolicy (GenericPolicy s a)
 
-withAnyPolicy :: (DP_Policy num p pr s a, Monad m)
-  => pr num -> PolicyContainer num p s a -> (forall p1 . DP_Policy num p1 pr s a => p1 -> m x) -> m x
+withAnyPolicy :: (DP_Policy pr p s a num, Monad m)
+  => pr -> PolicyContainer num p s a -> (forall p1 . DP_Policy pr p1 s a num => p1 -> m x) -> m x
 withAnyPolicy pr ap handler = do
   case ap of
     APolicy p -> handler p
     GPolicy gp -> handler gp
 
-policy_iteraton :: (DP_Policy num p pr s a, MonadIO m, Ord a)
-  => pr num -> p -> StateVal num s -> EvalOpts num s a -> m (StateVal num s, GenericPolicy s a)
+policy_iteraton :: (DP_Policy pr p s a num, MonadIO m, Ord a)
+  => pr -> p -> StateVal num s -> EvalOpts num s a -> m (StateVal num s, GenericPolicy s a)
 policy_iteraton pr p v eo = do
   (v', GPolicy p') <- flip execStateT (v, APolicy p) $ loop $ do
     (v,ap) <- get

@@ -8,10 +8,10 @@ import RL.Types
 import RL.Imports
 import RL.DP
 
-import Examples.Ch4_GridWorld.Base as GW
+import Examples.Ch4_GridWorld.Rules as GW
 
 
-instance (Fractional num, Ord num) => DP_Problem num GW (Int,Int) Action where
+instance (Fractional num, Ord num) => DP_Problem (GW num) (Int,Int) Action num where
 
   rl_states p@(GW (sx,sy) _) = Set.fromList [(x,y) | x <- [0..sx-1], y <- [0..sy-1]]
 
@@ -28,7 +28,7 @@ instance (Fractional num, Ord num) => DP_Problem num GW (Int,Int) Action where
   rl_terminal_states (GW _ exits) = exits
 
 
-instance (Fractional num, Ord num) => DP_Policy num GWRandomPolicy GW (Int,Int) Action where
+instance (Fractional num, Ord num) => DP_Policy (GW num) GWRandomPolicy (Int,Int) Action num where
 
   rlp_action GWRandomPolicy g s = (\x -> (x,1%(toInteger $ length a)))`Set.map`a
     where

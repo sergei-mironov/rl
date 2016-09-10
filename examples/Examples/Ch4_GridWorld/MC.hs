@@ -11,7 +11,7 @@ import RL.Imports
 import RL.MC
 import RL.MC.ES
 
-import Examples.Ch4_GridWorld.Base
+import Examples.Ch4_GridWorld.Rules
 import Examples.Ch4_GridWorld.DP as DP
 
 

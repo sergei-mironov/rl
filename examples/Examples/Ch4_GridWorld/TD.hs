@@ -1,4 +1,4 @@
-module Examples.Ch4_GridWorld.TD where
+module Examples.Ch4_GridWorld.TD (gw_iter_q) where
 
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Set as Set
@@ -10,8 +10,8 @@ import RL.Imports
 import RL.TD.Types as TD
 import RL.TD as TD
 
-import Examples.Ch4_GridWorld.Base(GW(..), Point, Action)
-import qualified Examples.Ch4_GridWorld.Base as GW
+import Examples.Ch4_GridWorld.Rules(GW(..), Point, Action)
+import qualified Examples.Ch4_GridWorld.Rules as GW
 import qualified Examples.Ch4_GridWorld.DP as DP
 
 data TD_GW m = TD_GW {
@@ -26,10 +26,10 @@ instance (Monad m) => TD_Problem (TD_GW m) m Point Action where
   td_transition TD_GW{..} s a q = return (GW.transition gw s a)
   td_modify TD_GW{..} s a q = gw_trace s a q
 
-sv2v :: (Hashable s, Eq s) => StateVal TD_Number s -> V s
-sv2v sv = HashMap.fromList $ Map.toList $ v_map sv
+sv2v :: (Hashable s, Eq s) => StateVal TD_Number s -> V s a
+sv2v sv = HashMap.fromList $ map (\(a,b) -> (a,(error "TD: sv2v: missing action",b))) (Map.toList $ v_map sv)
 
-showV gw v = GW.showGW gw (\p -> HashMap.lookup p v)
+showV gw v = GW.showGW gw (\p -> snd <$> HashMap.lookup p v)
 
 gw_iter_q :: GW TD_Number -> IO ()
 gw_iter_q gw =
