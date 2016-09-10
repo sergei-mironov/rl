@@ -57,13 +57,14 @@ modifyZ pr s a f = tdl_z %= modify_s_a s a f
 action pr s eps = queryQ s >>= eps_greedy_action eps (td_greedy pr)
 transition pr s a = get >>= lift . td_transition pr s a
 
+-- | TD(lambda) learning, aka Sarsa, pg 171
 tdl_learn :: (MonadRnd g m, TDl_Problem pr m s a)
   => TDl_Opts -> Q s a -> s -> pr -> m (s, Q s a)
 tdl_learn TDl_Opts{..} q0 s0 pr = do
-  (fst *** view tdl_q) <$> do
+  (view _1 *** view tdl_q) <$> do
   flip runStateT (initialState q0) $ do
     (a0,q0) <- action pr s0 o_eps
-    loopM (s0,(a0,q0)) (not . td_is_terminal pr . fst) $ \(s,(a,q)) -> do
+    loopM (s0,a0,q0) (not . td_is_terminal pr . view _1) $ \(s,a,q) -> do
       s' <- transition pr s a
       r <- pure $ td_reward pr s a s'
       (a',q') <- action pr s' o_eps
@@ -72,5 +73,28 @@ tdl_learn TDl_Opts{..} q0 s0 pr = do
       listZ pr s a $ \(s,a,z) -> do
         modifyQ pr s a (\q -> q + o_alpha * delta * z)
         modifyZ pr s a (const $ o_gamma * o_lambda * z)
-      return (s',(a',q'))
+      return (s',a',q')
+
+
+-- | Watkins's Q(lambda) learning algorithm, pg 174
+qlw_learn :: (MonadRnd g m, TDl_Problem pr m s a)
+  => TDl_Opts -> Q s a -> s -> pr -> m (s, Q s a)
+qlw_learn TDl_Opts{..}  q0 s0 pr =
+  (view _1 *** view tdl_q) <$> do
+  flip runStateT (initialState q0) $ do
+    (a0,q0) <- action pr s0 o_eps
+    loopM (s0,a0,q0) (not . td_is_terminal pr . view _1) $ \(s,a,q) -> do
+      s' <- transition pr s a
+      r <- pure $ td_reward pr s a s'
+      (a',q') <- action pr s' o_eps
+      (a'',q'') <- maximumBy (compare`on`snd) <$> queryQ s'
+      delta <- pure $ r + o_gamma*q'' - q
+      modifyZ pr s a (+1)
+      listZ pr s a $ \(s,a,z) -> do
+        modifyQ pr s a (\q -> q + o_alpha * delta * z)
+        modifyZ pr s a (\z -> if a' == a''
+                                then o_gamma*o_lambda*z
+                                else 0)
+      return (s',a',q')
+
 

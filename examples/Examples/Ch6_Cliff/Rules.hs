@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 module Examples.Ch6_Cliff.Rules where
 
 import qualified Data.List as List
@@ -16,9 +17,6 @@ data Action = L | R | U | D
 
 showAction :: Action -> String
 showAction = \case { L->"<" ; R->">" ; U->"^" ; D->"v" ; }
-
--- showActions :: Set Action -> String
--- showActions = concat . map showAction . List.sort . Set.toList
 
 data CW = CW {
   cw_size :: (Int,Int)

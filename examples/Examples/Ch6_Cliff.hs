@@ -1,4 +1,8 @@
-module Examples.Ch6_Cliff where
+module Examples.Ch6_Cliff (
+    module Examples.Ch6_Cliff
+  , module Examples.Ch6_Cliff.TD
+  , module Examples.Ch6_Cliff.TDl
+  ) where
 
 import Examples.Ch6_Cliff.Rules
 import Examples.Ch6_Cliff.TD
