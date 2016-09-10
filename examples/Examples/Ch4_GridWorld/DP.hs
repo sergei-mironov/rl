@@ -10,29 +10,34 @@ import RL.DP
 
 import Examples.Ch4_GridWorld.Rules as GW
 
+data DP_GW m num = DP_GW {
+    gw :: GW num
+  , gw_trace :: Point -> Action -> Q Point Action -> m ()
+  }
 
-instance (Fractional num, Ord num) => DP_Problem (GW num) (Int,Int) Action num where
 
-  rl_states p@(GW (sx,sy) _) = Set.fromList [(x,y) | x <- [0..sx-1], y <- [0..sy-1]]
+instance (Fractional num, Ord num) => DP_Problem (DP_GW m num) m (Int,Int) Action num where
 
-  rl_actions pr s =
-    case Set.member s (rl_terminal_states pr) of
+  dp_states p@(GW (sx,sy) _) = Set.fromList [(x,y) | x <- [0..sx-1], y <- [0..sy-1]]
+
+  dp_actions pr s =
+    case Set.member s (dp_terminal_states pr) of
       True -> Set.empty
       False -> Set.fromList [minBound..maxBound]
 
-  rl_transitions gw@(GW (sx,sy) _) s@(x,y) a =
+  dp_transitions gw@(GW (sx,sy) _) s@(x,y) a =
     Set.fromList [(GW.transition gw s a,1%1)]
 
-  rl_reward (GW (sx,sy) _) s a s' = -1
+  dp_reward (GW (sx,sy) _) s a s' = -1
 
-  rl_terminal_states (GW _ exits) = exits
+  dp_terminal_states (GW _ exits) = exits
 
 
 instance (Fractional num, Ord num) => DP_Policy (GW num) GWRandomPolicy (Int,Int) Action num where
 
   rlp_action GWRandomPolicy g s = (\x -> (x,1%(toInteger $ length a)))`Set.map`a
     where
-      a = rl_actions g s
+      a = dp_actions g s
 
 showStateVal gw StateVal{..} = showGW gw (\p -> Map.lookup p v_map)
 
