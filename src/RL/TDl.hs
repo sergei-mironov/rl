@@ -58,6 +58,7 @@ action pr s eps = queryQ s >>= eps_greedy_action eps (td_greedy pr)
 transition pr s a = get >>= lift . td_transition pr s a
 
 -- | TD(lambda) learning, aka Sarsa, pg 171
+-- FIXME: The algorithm doesn't converge for some unknown reason
 tdl_learn :: (MonadRnd g m, TDl_Problem pr m s a)
   => TDl_Opts -> Q s a -> s -> pr -> m (s, Q s a)
 tdl_learn TDl_Opts{..} q0 s0 pr = do
