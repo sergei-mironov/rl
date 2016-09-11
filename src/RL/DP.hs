@@ -14,36 +14,37 @@ module RL.DP where
 
 import qualified Data.List as List
 import qualified Data.Map.Strict as Map
+import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Set as Set
 import Prelude hiding(break)
 
 import RL.Imports
 import RL.Types as RL
 
-{-
-  ____ _
- / ___| | __ _ ___ ___  ___  ___
-| |   | |/ _` / __/ __|/ _ \/ __|
-| |___| | (_| \__ \__ \  __/\__ \
- \____|_|\__,_|___/___/\___||___/
--}
+-- type Probab = Rational
+
+-- | Policy
+type P s a = HashMap s (Set (a,Probability))
+
 
 -- FIXME: Convert to fold-like style eventially
 -- | Dynamic Programming Problem. Parameters have the following meaning: @num@ -
 -- Type of Numbers; @pr@ - the problem; @s@ - State; @a@ - Action
-class (Ord s, Fractional num, Ord num) => DP_Problem pr m s a num | pr -> m, pr -> s, pr -> a, pr -> num where
+class (Monad m, Ord s, Ord a, Fractional num, Ord num, Hashable s) =>
+    DP_Problem pr m s a num | pr -> m, pr -> s, pr -> a, pr -> num where
   dp_states :: pr -> Set s
   dp_actions :: pr -> s -> Set a
   dp_transitions :: pr -> s -> a -> Set (s, Probability)
   dp_reward :: pr -> s -> a -> s -> num
   -- FIXME: think about splitting terminal and non-terminal states
   dp_terminal_states :: pr -> Set s
-  dp_trace :: pr -> StateVal num s -> GenericPolicy s a -> m ()
+  dp_action :: pr -> P s a -> s -> Set (a,Probability)
+
+  dp_trace :: pr -> StateVal num s -> P s a -> m ()
 
 -- | Dynamic Programming Policy. Parameters have same meaning as in DP_Problem,
 -- @p@ means the Policy
-class (DP_Problem pr m s a num) => DP_Policy pr m p s a num where
-  dp_action :: p -> pr -> s -> Set (a,Probability)
+-- class (DP_Problem pr m s a num) => DP_Policy pr m p s a num where
 
 zero_sate_values :: (DP_Problem pr m s a num)
   => pr -> StateVal num s
@@ -87,20 +88,20 @@ invariant_terminal pr =
       False -> error $ "State " ++ show st ++ " is not a valid state"
 
 -- Policy returns valid actions
-invariant_policy_actions :: (DP_Policy pr m p s a num, Ord a, Show s, Show a) => p -> pr -> Bool
+invariant_policy_actions :: (DP_Problem pr m s a num, Ord a, Show s, Show a) => P s a -> pr -> Bool
 invariant_policy_actions p pr =
   flip all (dp_states pr) $ \s ->
-    flip all (dp_action p pr s) $ \(a, prob) ->
+    flip all (dp_action pr p s) $ \(a, prob) ->
       case Set.member a (dp_actions pr s) of
         True -> True
         False -> error $ "Policy from state " ++ show s ++ " leads to invalid action " ++ show a
 
 -- Policy return valid probabilities
-invariant_policy_prob :: (DP_Policy pr m p s a num, Ord a, Show s, Show a) => p -> pr -> Bool
+invariant_policy_prob :: (DP_Problem pr m s a num, Ord a, Show s, Show a) => P s a -> pr -> Bool
 invariant_policy_prob p pr =
   flip all (dp_states pr) $ \s ->
     let
-      as = Set.toList (dp_action p pr s)
+      as = Set.toList (dp_action pr p s)
     in
     case sum $ map snd as of
       1 -> True
@@ -117,15 +118,15 @@ invariant pr = all ($ pr) [
   , invariant_no_dead_states
   ]
 
-policy_eq :: (Eq a, DP_Policy pr m p1 s a num, DP_Policy pr m p2 s a num) => pr -> p1 -> p2 -> Bool
-policy_eq pr p1 p2 = all (\s -> (dp_action p1 pr s) == (dp_action p2 pr s)) (dp_states pr)
+policy_eq :: (Eq a, DP_Problem pr m s a num) => pr -> P s a -> P s a -> Bool
+policy_eq pr p1 p2 = all (\s -> (dp_action pr p1 s) == (dp_action pr p2 s)) (dp_states pr)
 
-instance (DP_Problem pr m s a num) => DP_Policy pr m (GenericPolicy s a) s a num where
-  dp_action GenericPolicy{..} _ s = _p_map ! s
+-- instance (DP_Problem pr m s a num) => DP_Policy pr m (GenericPolicy s a) s a num where
+--   dp_action GenericPolicy{..} _ s = _p_map ! s
 
-uniformGenericPolicy :: (Ord a, DP_Problem pr m s a num) => pr -> GenericPolicy s a
-uniformGenericPolicy pr = GenericPolicy{..} where
-  _p_map = Map.fromList $ flip map (Set.toList (dp_states pr)) $ \s ->
+uniformGenericPolicy :: (Ord a, DP_Problem pr m s a num) => pr -> P s a
+uniformGenericPolicy pr =
+  HashMap.fromList $ flip map (Set.toList (dp_states pr)) $ \s ->
     let
       as = dp_actions pr s
     in
@@ -177,8 +178,8 @@ initEvalState StateVal{..} = EvalState 0 v_map v_map 0
 
 -- | Iterative policy evaluation algorithm
 -- Figure 4.1, pg.86.
-policy_eval :: (DP_Policy pr m p s a num, MonadIO m)
-  => pr -> p -> EvalOpts num s a -> StateVal num s -> m (StateVal num s)
+policy_eval :: (DP_Problem pr m s a num)
+  => pr -> P s a -> EvalOpts num s a -> StateVal num s -> m (StateVal num s)
 policy_eval pr p EvalOpts{..} v = do
   let sum l f = List.sum <$> forM (Set.toList l) f
 
@@ -194,7 +195,7 @@ policy_eval pr p EvalOpts{..} v = do
       forM_ (dp_states pr) $ \s -> do
         v_s <- uses es_v (!s)
         v's <- do
-          sum (dp_action p pr s) $ \(a, fromRational -> pa) -> do
+          sum (dp_action pr p s) $ \(a, fromRational -> pa) -> do
             (pa*) <$> do
               sum (dp_transitions pr s a) $ \(s', fromRational -> p) -> do
                 v_s' <- uses es_v (!s')
@@ -218,67 +219,64 @@ policy_action_value pr s a EvalOpts{..} StateVal{..} =
   flip map (Set.toList $ dp_transitions pr s a) $ \(s', fromRational -> p) ->
     p * ((dp_reward pr s a s') + eo_gamma * (v_map ! s'))
 
-policy_improve :: (DP_Problem pr m s a num, MonadIO m, Ord a)
-  => pr -> EvalOpts num s a -> StateVal num s -> m (GenericPolicy s a)
+policy_improve :: (DP_Problem pr m s a num, Ord a)
+  => pr -> EvalOpts num s a -> StateVal num s -> m (P s a)
 policy_improve pr eo@EvalOpts{..} v@StateVal{..} = do
   let sum l f = List.sum <$> forM (Set.toList l) f
+  flip execStateT mempty $ do
 
-  GenericPolicy <$> do
-    flip execStateT Map.empty $ do
-
-      forM_ (dp_states pr) $ \s -> do
-        (maxv, maxa) <- do
-          foldlM (\(val,maxa) a -> do
-                    pi_s <- pure $ policy_action_value pr s a eo v
-                    return $
-                      if Set.null maxa then
+    forM_ (dp_states pr) $ \s -> do
+      (maxv, maxa) <- do
+        foldlM (\(val,maxa) a -> do
+                  pi_s <- pure $ policy_action_value pr s a eo v
+                  return $
+                    if Set.null maxa then
+                      (pi_s, Set.singleton a)
+                    else
+                      if pi_s > val then
+                        -- GT
                         (pi_s, Set.singleton a)
                       else
-                        if pi_s > val then
-                          -- GT
-                          (pi_s, Set.singleton a)
+                        if pi_s < val then
+                          --LT
+                          (val,maxa)
                         else
-                          if pi_s < val then
-                            --LT
-                            (val,maxa)
-                          else
-                            -- EQ
-                            (val, Set.insert a maxa)
-                 ) (0 ,Set.empty) (dp_actions pr s)
+                          -- EQ
+                          (val, Set.insert a maxa)
+               ) (0, Set.empty) (dp_actions pr s)
 
-        let nmax = toInteger (Set.size maxa)
-        modify $ Map.insert s (Set.map (\a -> (a,1%nmax)) maxa)
+      let nmax = toInteger (Set.size maxa)
+      modify $ HashMap.insert s (Set.map (\a -> (a,1%nmax)) maxa)
 
 
-policy_iteraton_step :: (DP_Policy pr m p s a num, MonadIO m, Ord a)
-  => pr -> p -> StateVal num s -> EvalOpts num s a -> m (StateVal num s, GenericPolicy s a)
+policy_iteraton_step :: (DP_Problem pr m s a num, Ord a)
+  => pr -> P s a -> StateVal num s -> EvalOpts num s a -> m (StateVal num s, P s a)
 policy_iteraton_step pr p v eo = do
   v' <- policy_eval pr p eo v
   p' <- policy_improve pr eo v'
   return (v',p')
 
-data PolicyContainer num p s a = APolicy p | GPolicy (GenericPolicy s a)
+-- data PolicyContainer num p s a = APolicy p | GPolicy (GenericPolicy s a)
 
-withAnyPolicy :: (Monad m)
-  => pr -> PolicyContainer num p s a -> (forall p1 . p1 -> m x) -> m x
-withAnyPolicy pr ap handler = do
-  case ap of
-    APolicy p -> handler p
-    GPolicy gp -> handler gp
+-- withAnyPolicy :: (Monad m)
+--   => pr -> PolicyContainer num p s a -> (forall p1 . p1 -> m x) -> m x
+-- withAnyPolicy pr ap handler = do
+--   case ap of
+--     APolicy p -> handler p
+--     GPolicy gp -> handler gp
 
-policy_iteraton :: (DP_Policy pr m p s a num, Ord a)
-  => pr -> p -> StateVal num s -> EvalOpts num s a -> m (StateVal num s, GenericPolicy s a)
+policy_iteraton :: (DP_Problem pr m s a num, Ord a)
+  => pr -> P s a -> StateVal num s -> EvalOpts num s a -> m (StateVal num s, P s a)
 policy_iteraton pr p v eo = do
-  (v', GPolicy p') <-
-    flip execStateT (v, APolicy p) $ do
+  (v', p') <-
+    flip execStateT (v, p) $ do
     loop $ do
-      (v,ap) <- get
-      withAnyPolicy pr ap $ \p -> do
-        (v', p') <- policy_iteraton_step pr p v eo
-        lift $ lift $ dp_trace pr v' p'
-        put (v', GPolicy p')
-        when (policy_eq pr p p') $ do
-          break ()
+      (v,p) <- get
+      (v', p') <- lift $ lift $ policy_iteraton_step pr p v eo
+      lift $ lift $ dp_trace pr v' p'
+      put (v', p')
+      when (policy_eq pr p p') $ do
+        break ()
   return (v',p')
 
 
