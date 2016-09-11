@@ -26,6 +26,8 @@ import RL.Types as RL
 -- | Policy
 type P s a = HashMap s (Set (a,Probability))
 
+type V s num = HashMap s num
+
 
 -- FIXME: Convert to fold-like style eventially
 -- | Dynamic Programming Problem. Parameters have the following meaning: @num@ -
@@ -40,15 +42,15 @@ class (Monad m, Ord s, Ord a, Fractional num, Ord num, Hashable s) =>
   dp_terminal_states :: pr -> Set s
   dp_action :: pr -> P s a -> s -> Set (a,Probability)
 
-  dp_trace :: pr -> StateVal num s -> P s a -> m ()
+  dp_trace :: pr -> V s num -> P s a -> m ()
 
 -- | Dynamic Programming Policy. Parameters have same meaning as in DP_Problem,
 -- @p@ means the Policy
 -- class (DP_Problem pr m s a num) => DP_Policy pr m p s a num where
 
 zero_sate_values :: (DP_Problem pr m s a num)
-  => pr -> StateVal num s
-zero_sate_values pr =  StateVal $ Map.fromList $ map (\s -> (s,0.0)) (Set.toList $ dp_states pr)
+  => pr -> V s num
+zero_sate_values pr =  HashMap.fromList $ map (\s -> (s,0.0)) (Set.toList $ dp_states pr)
 
 -- | For given state, probabilities for all possible action should sum up to 1
 invariant_probable_actions :: (DP_Problem pr m s a num, Show s, Show a) => pr -> Bool
@@ -166,24 +168,24 @@ defaultOpts = EvalOpts {
 
 data EvalState num s = EvalState {
     _es_delta :: num
-  , _es_v :: Map s num
-  , _es_v' :: Map s num
+  , _es_v :: V s num
+  , _es_v' :: V s num
   , _es_iter :: Int
   } deriving(Show)
 
 makeLenses ''EvalState
 
-initEvalState :: (Fractional num) => StateVal num s -> EvalState num s
-initEvalState StateVal{..} = EvalState 0 v_map v_map 0
+initEvalState :: (Fractional num) => V s num -> EvalState num s
+initEvalState v = EvalState 0 v v 0
 
 -- | Iterative policy evaluation algorithm
 -- Figure 4.1, pg.86.
 policy_eval :: (DP_Problem pr m s a num)
-  => pr -> P s a -> EvalOpts num s a -> StateVal num s -> m (StateVal num s)
+  => pr -> P s a -> EvalOpts num s a -> V s num -> m (V s num)
 policy_eval pr p EvalOpts{..} v = do
   let sum l f = List.sum <$> forM (Set.toList l) f
 
-  StateVal . view es_v <$> do
+  view es_v <$> do
     flip execStateT (initEvalState v) $ loop $ do
 
       i <- use es_iter
@@ -193,15 +195,15 @@ policy_eval pr p EvalOpts{..} v = do
       es_delta %= const 0
 
       forM_ (dp_states pr) $ \s -> do
-        v_s <- uses es_v (!s)
+        v_s <- (HashMap.!s) <$> use es_v
         v's <- do
           sum (dp_action pr p s) $ \(a, fromRational -> pa) -> do
             (pa*) <$> do
               sum (dp_transitions pr s a) $ \(s', fromRational -> p) -> do
-                v_s' <- uses es_v (!s')
+                v_s' <- (HashMap.!s') <$> use es_v
                 pure $ p * ((dp_reward pr s a s') + eo_gamma * (v_s'))
 
-        es_v' %= (Map.insert s v's)
+        es_v' %= (HashMap.insert s v's)
         es_delta %= (`max`(abs (v's - v_s)))
 
       d <- use es_delta
@@ -213,18 +215,16 @@ policy_eval pr p EvalOpts{..} v = do
 
       es_iter %= (+1)
 
-policy_action_value :: (DP_Problem pr m s a num) => pr -> s  -> a -> EvalOpts num s a -> StateVal num s -> num
-policy_action_value pr s a EvalOpts{..} StateVal{..} =
-  List.sum $
-  flip map (Set.toList $ dp_transitions pr s a) $ \(s', fromRational -> p) ->
-    p * ((dp_reward pr s a s') + eo_gamma * (v_map ! s'))
+policy_action_value :: (DP_Problem pr m s a num) => pr -> s  -> a -> EvalOpts num s a -> V s num -> num
+policy_action_value pr s a EvalOpts{..} v =
+  List.sum $ flip map (Set.toList $ dp_transitions pr s a) $ \(s', fromRational -> p) ->
+    p * ((dp_reward pr s a s') + eo_gamma * (v HashMap.! s'))
 
 policy_improve :: (DP_Problem pr m s a num, Ord a)
-  => pr -> EvalOpts num s a -> StateVal num s -> m (P s a)
-policy_improve pr eo@EvalOpts{..} v@StateVal{..} = do
+  => pr -> EvalOpts num s a -> V s num -> m (P s a)
+policy_improve pr eo@EvalOpts{..} v = do
   let sum l f = List.sum <$> forM (Set.toList l) f
   flip execStateT mempty $ do
-
     forM_ (dp_states pr) $ \s -> do
       (maxv, maxa) <- do
         foldlM (\(val,maxa) a -> do
@@ -250,7 +250,7 @@ policy_improve pr eo@EvalOpts{..} v@StateVal{..} = do
 
 
 policy_iteraton_step :: (DP_Problem pr m s a num, Ord a)
-  => pr -> P s a -> StateVal num s -> EvalOpts num s a -> m (StateVal num s, P s a)
+  => pr -> P s a -> V s num -> EvalOpts num s a -> m (V s num, P s a)
 policy_iteraton_step pr p v eo = do
   v' <- policy_eval pr p eo v
   p' <- policy_improve pr eo v'
@@ -266,7 +266,7 @@ policy_iteraton_step pr p v eo = do
 --     GPolicy gp -> handler gp
 
 policy_iteraton :: (DP_Problem pr m s a num, Ord a)
-  => pr -> P s a -> StateVal num s -> EvalOpts num s a -> m (StateVal num s, P s a)
+  => pr -> P s a -> V s num -> EvalOpts num s a -> m (V s num, P s a)
 policy_iteraton pr p v eo = do
   (v', p') <-
     flip execStateT (v, p) $ do
