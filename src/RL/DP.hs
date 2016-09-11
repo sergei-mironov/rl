@@ -21,8 +21,6 @@ import Prelude hiding(break)
 import RL.Imports
 import RL.Types as RL
 
--- type Probab = Rational
-
 -- | Policy
 type P s a = HashMap s (Set (a,Probability))
 
@@ -43,10 +41,6 @@ class (Monad m, Ord s, Ord a, Fractional num, Ord num, Hashable s) =>
   dp_action :: pr -> P s a -> s -> Set (a,Probability)
 
   dp_trace :: pr -> V s num -> P s a -> m ()
-
--- | Dynamic Programming Policy. Parameters have same meaning as in DP_Problem,
--- @p@ means the Policy
--- class (DP_Problem pr m s a num) => DP_Policy pr m p s a num where
 
 zero_sate_values :: (DP_Problem pr m s a num)
   => pr -> V s num
@@ -123,8 +117,6 @@ invariant pr = all ($ pr) [
 policy_eq :: (Eq a, DP_Problem pr m s a num) => pr -> P s a -> P s a -> Bool
 policy_eq pr p1 p2 = all (\s -> (dp_action pr p1 s) == (dp_action pr p2 s)) (dp_states pr)
 
--- instance (DP_Problem pr m s a num) => DP_Policy pr m (GenericPolicy s a) s a num where
---   dp_action GenericPolicy{..} _ s = _p_map ! s
 
 uniformGenericPolicy :: (Ord a, DP_Problem pr m s a num) => pr -> P s a
 uniformGenericPolicy pr =
@@ -146,19 +138,17 @@ uniformGenericPolicy pr =
 -}
 
 
-data EvalOpts num s a = EvalOpts {
+data Opts num s a = Opts {
     eo_gamma :: num
   -- ^ Forgetness
   , eo_etha :: num
   -- ^ policy evaluation precision
   , eo_max_iter :: Int
   -- ^ policy evaluation iteration limit, [1..maxBound]
-  -- , eo_floating_precision :: Double
-  -- , eo_debug :: (StateVal num s, GenericPolicy s a) -> IO ()
-  } --deriving(Show)
+  } deriving(Show)
 
-defaultOpts :: (Fractional num) => EvalOpts num s a
-defaultOpts = EvalOpts {
+defaultOpts :: (Fractional num) => Opts num s a
+defaultOpts = Opts {
     eo_gamma = 0.9
   , eo_etha = 0.1
   , eo_max_iter = 10^3
@@ -181,12 +171,12 @@ initEvalState v = EvalState 0 v v 0
 -- | Iterative policy evaluation algorithm
 -- Figure 4.1, pg.86.
 policy_eval :: (DP_Problem pr m s a num)
-  => pr -> P s a -> EvalOpts num s a -> V s num -> m (V s num)
-policy_eval pr p EvalOpts{..} v = do
+  => Opts num s a -> P s a -> V s num -> pr -> V s num
+policy_eval Opts{..} p v pr = do
   let sum l f = List.sum <$> forM (Set.toList l) f
 
-  view es_v <$> do
-    flip execStateT (initEvalState v) $ loop $ do
+  view es_v $
+    flip execState (initEvalState v) $ loop $ do
 
       i <- use es_iter
       when (i > eo_max_iter-1) $ do
@@ -215,20 +205,20 @@ policy_eval pr p EvalOpts{..} v = do
 
       es_iter %= (+1)
 
-policy_action_value :: (DP_Problem pr m s a num) => pr -> s  -> a -> EvalOpts num s a -> V s num -> num
-policy_action_value pr s a EvalOpts{..} v =
+policy_action_value :: (DP_Problem pr m s a num) => Opts num s a -> s -> a -> V s num -> pr -> num
+policy_action_value Opts{..} s a v pr =
   List.sum $ flip map (Set.toList $ dp_transitions pr s a) $ \(s', fromRational -> p) ->
     p * ((dp_reward pr s a s') + eo_gamma * (v HashMap.! s'))
 
 policy_improve :: (DP_Problem pr m s a num, Ord a)
-  => pr -> EvalOpts num s a -> V s num -> m (P s a)
-policy_improve pr eo@EvalOpts{..} v = do
+  => Opts num s a -> V s num -> pr -> P s a
+policy_improve o v pr = do
   let sum l f = List.sum <$> forM (Set.toList l) f
-  flip execStateT mempty $ do
+  flip execState mempty $ do
     forM_ (dp_states pr) $ \s -> do
       (maxv, maxa) <- do
         foldlM (\(val,maxa) a -> do
-                  pi_s <- pure $ policy_action_value pr s a eo v
+                  pi_s <- pure $ policy_action_value o s a v pr
                   return $
                     if Set.null maxa then
                       (pi_s, Set.singleton a)
@@ -238,7 +228,7 @@ policy_improve pr eo@EvalOpts{..} v = do
                         (pi_s, Set.singleton a)
                       else
                         if pi_s < val then
-                          --LT
+                          -- LT
                           (val,maxa)
                         else
                           -- EQ
@@ -248,31 +238,15 @@ policy_improve pr eo@EvalOpts{..} v = do
       let nmax = toInteger (Set.size maxa)
       modify $ HashMap.insert s (Set.map (\a -> (a,1%nmax)) maxa)
 
-
-policy_iteraton_step :: (DP_Problem pr m s a num, Ord a)
-  => pr -> P s a -> V s num -> EvalOpts num s a -> m (V s num, P s a)
-policy_iteraton_step pr p v eo = do
-  v' <- policy_eval pr p eo v
-  p' <- policy_improve pr eo v'
-  return (v',p')
-
--- data PolicyContainer num p s a = APolicy p | GPolicy (GenericPolicy s a)
-
--- withAnyPolicy :: (Monad m)
---   => pr -> PolicyContainer num p s a -> (forall p1 . p1 -> m x) -> m x
--- withAnyPolicy pr ap handler = do
---   case ap of
---     APolicy p -> handler p
---     GPolicy gp -> handler gp
-
 policy_iteraton :: (DP_Problem pr m s a num, Ord a)
-  => pr -> P s a -> V s num -> EvalOpts num s a -> m (V s num, P s a)
-policy_iteraton pr p v eo = do
+  => Opts num s a -> P s a -> V s num -> pr -> m (V s num, P s a)
+policy_iteraton o p v pr = do
   (v', p') <-
     flip execStateT (v, p) $ do
     loop $ do
       (v,p) <- get
-      (v', p') <- lift $ lift $ policy_iteraton_step pr p v eo
+      v' <- pure $ policy_eval o p v pr
+      p' <- pure $ policy_improve o v' pr
       lift $ lift $ dp_trace pr v' p'
       put (v', p')
       when (policy_eq pr p p') $ do
