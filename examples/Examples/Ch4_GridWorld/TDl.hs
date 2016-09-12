@@ -1,6 +1,7 @@
 module Examples.Ch4_GridWorld.TDl (
     gw_iter_tdl
   , gw_iter_qlw
+  , TDl_GW(..)
   ) where
 
 import qualified Prelude
@@ -13,17 +14,17 @@ import RL.TDl as TDl
 import Examples.Ch4_GridWorld.Rules (GW(..), Point, Action)
 import qualified Examples.Ch4_GridWorld.Rules as Rules
 
-data TD_GW m = TD_GW {
+data TDl_GW m = TDl_GW {
     gw :: GW TD_Number
   , gw_trace :: Point -> Action -> Q Point Action -> m ()
   }
 
-instance (Monad m) => TDl_Problem (TD_GW m) m Point Action where
-  td_is_terminal TD_GW{..} p = Rules.isTerminal gw p
-  td_greedy TD_GW{..} best = id
-  td_reward TD_GW{..} s a s' = -1
-  td_transition TD_GW{..} s a st = return (Rules.transition gw s a)
-  td_modify TD_GW{..} s a st = gw_trace s a (st^.tdl_q)
+instance (Monad m) => TDl_Problem (TDl_GW m) m Point Action where
+  td_is_terminal TDl_GW{..} p = Rules.isTerminal gw p
+  td_greedy TDl_GW{..} best = id
+  td_reward TDl_GW{..} s a s' = -1
+  td_transition TDl_GW{..} s a st = return (Rules.transition gw s a)
+  td_modify TDl_GW{..} s a st = gw_trace s a (st^.tdl_q)
 
 showV gw v = Rules.showV gw (HashMap.toList v)
 
@@ -55,7 +56,7 @@ gw_iter_tdl gw =
         q <- use st_q
 
         (s',q') <-
-          tdl_learn o q s0 $ TD_GW gw $ \s a q -> do
+          tdl_learn o q s0 $ TDl_GW gw $ \s a q -> do
             i <- use st_i
             when (i >= cnt) $ do
               break ()
@@ -94,7 +95,7 @@ gw_iter_qlw gw =
         q <- use st_q
 
         (s',q') <-
-          qlw_learn o q s0 $ TD_GW gw $ \s a q -> do
+          qlw_learn o q s0 $ TDl_GW gw $ \s a q -> do
             i <- use st_i
             when (i >= cnt) $ do
               break ()

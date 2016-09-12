@@ -1,4 +1,6 @@
-module Examples.Ch4_GridWorld.DP where
+module Examples.Ch4_GridWorld.DP (
+    module Examples.Ch4_GridWorld.DP
+  ) where
 
 import qualified Data.List as List
 import qualified Data.HashMap.Strict as HashMap

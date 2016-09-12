@@ -10,7 +10,7 @@ import qualified Data.Set as Set
 import Prelude hiding(break)
 
 import RL.Types as RL
-import RL.DP (DP_Problem(..), DP_Policy(..))
+import RL.DP (DP_Problem(..))
 import qualified RL.DP as DP
 
 import RL.MC.Types

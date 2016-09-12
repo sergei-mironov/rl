@@ -1,4 +1,7 @@
-module Examples.Ch4_GridWorld.TD (gw_iter_q) where
+module Examples.Ch4_GridWorld.TD (
+    gw_iter_q
+  , TD_GW(..)
+  ) where
 
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Set as Set

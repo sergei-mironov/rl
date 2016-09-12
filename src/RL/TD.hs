@@ -1,5 +1,8 @@
 {-# LANGUAGE DeriveFunctor #-}
-module RL.TD where
+module RL.TD (
+    module RL.TD
+  , module RL.TD.Types
+  ) where
 
 import qualified Prelude
 import qualified Data.HashMap.Strict as HashMap
