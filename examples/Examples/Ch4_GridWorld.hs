@@ -2,6 +2,7 @@ module Examples.Ch4_GridWorld (
     module Examples.Ch4_GridWorld
   , module Examples.Ch4_GridWorld.DP
   , module Examples.Ch4_GridWorld.TD
+  , module Examples.Ch4_GridWorld.TDl
   ) where
 
 
@@ -16,6 +17,7 @@ import Examples.Ch4_GridWorld.Rules
 import Examples.Ch4_GridWorld.DP
 -- import Examples.Ch4_GridWorld.MC
 import Examples.Ch4_GridWorld.TD
+import Examples.Ch4_GridWorld.TDl
 
 gw :: GW Rational
 gw = GW (4,4) (Set.fromList [(0,0),(3,3)])

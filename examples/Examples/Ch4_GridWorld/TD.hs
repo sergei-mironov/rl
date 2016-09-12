@@ -9,6 +9,7 @@ import RL.Types hiding (Q, q2v)
 import RL.Imports
 import RL.TD.Types as TD
 import RL.TD as TD
+import RL.DP as DP
 
 import Examples.Ch4_GridWorld.Rules(GW(..), Point, Action)
 import qualified Examples.Ch4_GridWorld.Rules as GW
@@ -26,10 +27,7 @@ instance (Monad m) => TD_Problem (TD_GW m) m Point Action where
   td_transition TD_GW{..} s a q = return (GW.transition gw s a)
   td_modify TD_GW{..} s a q = gw_trace s a q
 
-sv2v :: (Hashable s, Eq s) => StateVal TD_Number s -> V s a
-sv2v sv = HashMap.fromList $ map (\(a,b) -> (a,(error "TD: sv2v: missing action",b))) (Map.toList $ v_map sv)
-
-showV gw v = GW.showGW gw (\p -> snd <$> HashMap.lookup p v)
+showV gw v = GW.showGW gw (HashMap.toList v)
 
 gw_iter_q :: GW TD_Number -> IO ()
 gw_iter_q gw =
@@ -52,26 +50,25 @@ gw_iter_q gw =
   in do
 
   {- Reference StateVal -}
-  v_dp <- DP.gw_iter_dp gw
+  (v_dp, p_dp) <- DP.gw_iter_dp gw
 
   GW.withLearnPlot cnt $ \d -> do
     flip evalRndT_ g0 $ do
       flip execStateT (q0,0) $ do
         loop $ do
           s0 <- GW.arbitraryState gw
+          i <- use st_i
           q <- use st_q
 
-          q_learn o q s0 $ TD_GW gw $ \s a q -> do
-            i <- use st_i
-            when (i >= cnt) $ do
-              liftIO $ putStrLn $ "Exiting at " <> show i
-              break ()
-            st_q %= const q
-            st_i %= (+1)
+          (s',q') <-
+            q_learn o q s0 $ TD_GW gw $ \s a q -> do
+              i <- use st_i
+              when (i >= cnt) $ do
+                break ()
 
-          (q',i) <- get
           liftIO $ putStrLn $ "Loop i = " <> show i
-          liftIO $ showV gw (q2v q')
-          liftIO $ pushData d i (diffV (q2v q') (sv2v v_dp))
+          liftIO $ showV gw (TD.toV q')
+          liftIO $ pushData d i (DP.diffV (TD.toV q') v_dp)
+          st_i %= (+1)
           st_q %= const q'
 

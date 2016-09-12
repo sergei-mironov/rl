@@ -21,17 +21,12 @@ defaultOpts = Q_Opts {
   }
 
 type Q s a = M s a
-type V s a = HashMap s (a, TD_Number)
 
 emptyQ :: TD_Number -> Q s a
 emptyQ = initM
 
-q2v :: (Bounded a, Enum a, Eq a, Hashable a, Eq s, Hashable s) => Q s a -> V s a
-q2v = foldMap_s (\(s,l) -> HashMap.singleton s (layer_s_max l))
-
--- FIXME: handle missing states case
-diffV :: (Eq s, Hashable s) => V s a -> V s a -> TD_Number
-diffV tgt src = sum (HashMap.intersectionWith (\a b -> abs ((snd a) - (snd b))) tgt src)
+toV :: (Bounded a, Enum a, Eq a, Hashable a, Eq s, Hashable s) => Q s a -> HashMap s TD_Number
+toV = foldMap_s (\(s,l) -> HashMap.singleton s (snd $ layer_s_max l))
 
 class (Monad m, Eq s, Hashable s, Show s, Eq a, Hashable a, Enum a, Bounded a, Show a) =>
     TD_Problem pr m s a | pr -> m, pr -> s , pr -> a where

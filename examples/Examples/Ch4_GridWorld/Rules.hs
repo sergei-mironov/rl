@@ -43,9 +43,6 @@ data GW num = GW {
   }
   deriving(Show)
 
--- data GWRandomPolicy = GWRandomPolicy
---   deriving(Show)
-
 states ::  GW num -> Set Point
 states (GW (sx,sy) _) = Set.fromList [(x,y) | x <- [0..sx-1], y <- [0..sy-1]]
 
@@ -55,11 +52,26 @@ actions (GW (sx,sy) exits) s =
       True -> Set.empty
       False -> Set.fromList [minBound..maxBound]
 
-showGW :: (MonadIO m, Real num) => GW num -> (Point -> Maybe num) -> m ()
-showGW (GW (sx,sy) _) lookup = liftIO $ do
+transition :: GW num -> Point -> Action -> Point
+transition (GW (sx,sy) exits) (x,y) a =
+  let
+    check (x',y') =
+      if x' >= 0 && x' < sx && y' >= 0 && y' < sy then
+        (x',y')
+      else
+        (x,y)
+  in
+  case a of
+    L -> check (x-1,y)
+    R -> check (x+1,y)
+    U -> check (x,y-1)
+    D -> check (x,y+1)
+
+showGW :: (MonadIO m, Real num) => GW num -> [(Point, num)] -> m ()
+showGW (GW (sx,sy) _) v = liftIO $ do
   forM_ [0..sy-1] $ \y -> do
     forM_ [0..sx-1] $ \x -> do
-      case lookup (x,y) of
+      case List.lookup (x,y) v of
         Just v -> do
           printf "%-2.1f " ((fromRational $ toRational v) :: Double)
         Nothing -> do
@@ -92,24 +104,11 @@ arbitraryState gw@GW{..} = do
       False -> return (x,y)
 
 
-transition :: GW num -> Point -> Action -> Point
-transition (GW (sx,sy) exits) (x,y) a =
-  let
-    check (x',y') =
-      if x' >= 0 && x' < sx && y' >= 0 && y' < sy then
-        (x',y')
-      else
-        (x,y)
-  in
-  case a of
-    L -> check (x-1,y)
-    R -> check (x+1,y)
-    U -> check (x,y-1)
-    D -> check (x,y+1)
 
 isTerminal :: GW num -> Point -> Bool
 isTerminal GW{..} p = p `Set.member` gw_exits
 
+withLearnPlot :: Show a => a -> (PlotData -> IO b) -> IO b
 withLearnPlot cnt f = do
   d <- newData "learnRate"
   withPlot "plot1" [heredoc|

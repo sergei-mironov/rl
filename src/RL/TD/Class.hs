@@ -24,8 +24,10 @@ eps_greedy_action eps greedy as = do
   let arest = filter (\x -> fst x /= abest) as
   join $ Rnd.fromList [
     swap (toRational (1.0-eps), do
+      -- traceM "non-greedy"
       return (greedy False abest, qbest)),
     swap (toRational eps, do
+      -- traceM "greedy"
       (r,q) <- Rnd.uniform arest
       return (greedy True r, q))
     ]

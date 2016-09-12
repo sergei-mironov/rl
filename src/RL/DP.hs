@@ -28,6 +28,9 @@ type P s a = HashMap s (Set (a,Probability))
 
 type V s num = HashMap s num
 
+-- FIXME: handle missing states case
+diffV :: (Eq s, Hashable s, Num num) => V s num -> V s num -> num
+diffV tgt src = sum (HashMap.intersectionWith (\a b -> abs (a - b)) tgt src)
 
 -- FIXME: Convert to fold-like style eventially
 -- | Dynamic Programming Problem. Parameters have the following meaning: @num@ -
@@ -145,8 +148,6 @@ defaultOpts = Opts {
     eo_gamma = 0.9
   , eo_etha = 0.1
   , eo_max_iter = 10^3
-  -- , eo_floating_precision = 1/10^9
-  -- , eo_debug = error "no debug specified"
   }
 
 data EvalState num s = EvalState {

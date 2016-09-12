@@ -9,15 +9,12 @@ import RL.DP as DP
 
 import Examples.Ch4_GridWorld.Rules as GW
 
-
 instance (Fractional num, Ord num) => DP_Problem (GW num) Point Action num where
   dp_states gw = GW.states gw
   dp_actions gw s = GW.actions gw s
   dp_transitions gw s a = Set.fromList [(GW.transition gw s a,1%1)]
   dp_reward gw s a s' = -1
   dp_terminal_states gw = gw_exits gw
-
--- showStateVal gw v = showGW gw (\p -> HashMap.lookup p v)
 
 -- | Evaluate random policy with DP method
 gw_evalRandom_dp :: (DP_Problem (GW num) Point Action num) => GW num -> IO (V Point num)
@@ -39,4 +36,8 @@ gw_iter_dp gw =
   in do
   policy_iteration opts p0 v0 (DP gw $ \a b -> return ())
 
+
+gw_showRandom_dp gw = do
+  v <- gw_evalRandom_dp gw
+  showGW gw (HashMap.toList v)
 
