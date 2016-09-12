@@ -67,8 +67,8 @@ transition (GW (sx,sy) exits) (x,y) a =
     U -> check (x,y-1)
     D -> check (x,y+1)
 
-showGW :: (MonadIO m, Real num) => GW num -> [(Point, num)] -> m ()
-showGW (GW (sx,sy) _) v = liftIO $ do
+showV :: (MonadIO m, Real num) => GW num -> [(Point, num)] -> m ()
+showV (GW (sx,sy) _) v = liftIO $ do
   forM_ [0..sy-1] $ \y -> do
     forM_ [0..sx-1] $ \x -> do
       case List.lookup (x,y) v of

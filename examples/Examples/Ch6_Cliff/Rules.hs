@@ -23,9 +23,9 @@ data CW = CW {
   } deriving(Show)
 
 
-cw_exit (CW (sx,sy)) = (sx-1,sy-1)
+exits (CW (sx,sy)) = (sx-1,sy-1)
 
-cw_transition (CW (sx,sy)) (x,y) a =
+transition (CW (sx,sy)) (x,y) a =
   let
     check (x',y') =
       if x' >= 0 && x' < sx && y' >= 0 && y' < sy then
@@ -42,8 +42,8 @@ cw_transition (CW (sx,sy)) (x,y) a =
     U -> check (x,y-1)
     D -> check (x,y+1)
 
-cw_reward cw s a s' = if fall then -100 else -1 where
-  (s'', fall) = cw_transition cw s a
+reward cw s a s' = if fall then -100 else -1 where
+  (s'', fall) = transition cw s a
 
 showActionTable :: (MonadIO m) => CW -> [(Point,(Action, TD_Number))] -> m ()
 showActionTable pr@(CW (sx,sy)) at = liftIO $ do
@@ -54,6 +54,17 @@ showActionTable pr@(CW (sx,sy)) at = liftIO $ do
           printf "% 4s " "?"
         Just (a,_) -> do
           printf "% 4s " (showAction a)
+    printf "\n"
+
+showV :: (MonadIO m, Real num) => CW -> [(Point, num)] -> m ()
+showV (CW (sx,sy)) v = liftIO $ do
+  forM_ [0..sy-1] $ \y -> do
+    forM_ [0..sx-1] $ \x -> do
+      case List.lookup (x,y) v of
+        Just v -> do
+          printf "%-2.1f " ((fromRational $ toRational v) :: Double)
+        Nothing -> do
+          printf "  ?   "
     printf "\n"
 
 pickState :: MonadRnd g m => CW -> m Point

@@ -36,8 +36,8 @@ gw_iter_dp gw =
   in do
   policy_iteration opts p0 v0 (DP gw $ \a b -> return ())
 
-
+-- | Calculate and show value function of random policy
 gw_showRandom_dp gw = do
   v <- gw_evalRandom_dp gw
-  showGW gw (HashMap.toList v)
+  showV gw (HashMap.toList v)
 

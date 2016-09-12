@@ -7,7 +7,8 @@ import RL.Imports
 import RL.TD.Types as TD
 import RL.TD as TD
 
-import Examples.Ch6_Cliff.Rules
+import Examples.Ch6_Cliff.Rules(CW(..), Point, Action)
+import qualified Examples.Ch6_Cliff.Rules as Rules
 
 data TD_CW m = TD_CW {
     cw :: CW
@@ -15,12 +16,13 @@ data TD_CW m = TD_CW {
   }
 
 instance (Monad m) => TD_Problem (TD_CW m) m Point Action where
-  td_is_terminal TD_CW{..} p = (p == cw_exit cw)
+  td_is_terminal TD_CW{..} p = (p == Rules.exits cw)
   td_greedy TD_CW{..} best = id
-  td_reward TD_CW{..} = cw_reward cw
-  td_transition TD_CW{..} s a q = return (fst $ cw_transition cw s a)
+  td_reward TD_CW{..} = Rules.reward cw
+  td_transition TD_CW{..} s a q = return (fst $ Rules.transition cw s a)
   td_modify TD_CW{..} s a q = cw_trace s a q
 
+showV gw v = Rules.showV gw (HashMap.toList v)
 
 cw_iter_q :: CW -> IO ()
 cw_iter_q cw =
@@ -45,7 +47,7 @@ cw_iter_q cw =
   flip evalRndT_ g0 $ do
     flip execStateT (q0,0) $ do
       loop $ do
-        s0 <- pickState cw
+        s0 <- Rules.pickState cw
         i <- use st_i
         q <- use st_q
 
@@ -56,7 +58,7 @@ cw_iter_q cw =
               break ()
 
         liftIO $ putStrLn $ "Loop i = " <> show i
-        liftIO $ showActionTable cw (HashMap.toList (q2v q'))
+        liftIO $ showV cw (TD.toV q')
         st_i %= const (i+1)
         st_q %= const q'
 

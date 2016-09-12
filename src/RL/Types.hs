@@ -23,6 +23,7 @@ import System.Random
 
 import RL.Imports
 
+{-
 debug :: (MonadIO m) => String -> m ()
 debug = liftIO . putStrLn
 
@@ -119,4 +120,5 @@ monitorNew tgt = liftIO $
   Monitor tgt <$> do
     newData "MC"
 
+-}
 

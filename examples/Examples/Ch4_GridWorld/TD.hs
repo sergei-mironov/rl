@@ -12,7 +12,7 @@ import RL.TD as TD
 import RL.DP as DP
 
 import Examples.Ch4_GridWorld.Rules(GW(..), Point, Action)
-import qualified Examples.Ch4_GridWorld.Rules as GW
+import qualified Examples.Ch4_GridWorld.Rules as Rules
 import qualified Examples.Ch4_GridWorld.DP as DP
 
 data TD_GW m = TD_GW {
@@ -21,13 +21,13 @@ data TD_GW m = TD_GW {
   }
 
 instance (Monad m) => TD_Problem (TD_GW m) m Point Action where
-  td_is_terminal TD_GW{..} p = GW.isTerminal gw p
+  td_is_terminal TD_GW{..} p = Rules.isTerminal gw p
   td_greedy TD_GW{..} best = id
   td_reward TD_GW{..} s a s' = -1
-  td_transition TD_GW{..} s a q = return (GW.transition gw s a)
+  td_transition TD_GW{..} s a q = return (Rules.transition gw s a)
   td_modify TD_GW{..} s a q = gw_trace s a q
 
-showV gw v = GW.showGW gw (HashMap.toList v)
+showV gw v = Rules.showV gw (HashMap.toList v)
 
 gw_iter_q :: GW TD_Number -> IO ()
 gw_iter_q gw =
@@ -36,7 +36,7 @@ gw_iter_q gw =
     o = Q_Opts {
            o_alpha = 0.1
          , o_gamma = 1.0
-         , o_eps = 0.7
+         , o_eps = 0.3
          }
 
     q0 = TD.emptyQ 0   -- Initial Q table
@@ -52,11 +52,11 @@ gw_iter_q gw =
   {- Reference StateVal -}
   (v_dp, p_dp) <- DP.gw_iter_dp gw
 
-  GW.withLearnPlot cnt $ \d -> do
+  Rules.withLearnPlot cnt $ \d -> do
     flip evalRndT_ g0 $ do
       flip execStateT (q0,0) $ do
         loop $ do
-          s0 <- GW.arbitraryState gw
+          s0 <- Rules.arbitraryState gw
           i <- use st_i
           q <- use st_q
 
