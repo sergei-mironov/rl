@@ -43,8 +43,17 @@ data GW num = GW {
   }
   deriving(Show)
 
-data GWRandomPolicy = GWRandomPolicy
-  deriving(Show)
+-- data GWRandomPolicy = GWRandomPolicy
+--   deriving(Show)
+
+states ::  GW num -> Set Point
+states (GW (sx,sy) _) = Set.fromList [(x,y) | x <- [0..sx-1], y <- [0..sy-1]]
+
+actions :: GW num -> Point -> Set Action
+actions (GW (sx,sy) exits) s =
+    case Set.member s exits of
+      True -> Set.empty
+      False -> Set.fromList [minBound..maxBound]
 
 showGW :: (MonadIO m, Real num) => GW num -> (Point -> Maybe num) -> m ()
 showGW (GW (sx,sy) _) lookup = liftIO $ do
@@ -57,20 +66,20 @@ showGW (GW (sx,sy) _) lookup = liftIO $ do
           printf "  ?   "
     printf "\n"
 
-showGenericPolicy :: (MonadIO m, DP_Policy (GW num) (GenericPolicy Point Action) Point Action num)
-  => GW num
-  -> GenericPolicy Point Action
-  -> m ()
-showGenericPolicy pr@(GW (sx,sy) _) p@GenericPolicy{..} = liftIO $ do
-  forM_ [0..sy-1] $ \y -> do
-    forM_ [0..sx-1] $ \x -> do
-      case Map.lookup (x,y) (view p_map p) of
-        Nothing ->  do
-          printf "  ?   "
-        Just ap -> do
-          let acts = Set.map fst $ Set.filter (\(a,pa) -> pa > 0) ap
-          printf "% 4s " (showActions acts)
-    printf "\n"
+-- showGenericPolicy :: (MonadIO m, DP_Policy (GW num) (GenericPolicy Point Action) Point Action num)
+--   => GW num
+--   -> GenericPolicy Point Action
+--   -> m ()
+-- showGenericPolicy pr@(GW (sx,sy) _) p@GenericPolicy{..} = liftIO $ do
+--   forM_ [0..sy-1] $ \y -> do
+--     forM_ [0..sx-1] $ \x -> do
+--       case Map.lookup (x,y) (view p_map p) of
+--         Nothing ->  do
+--           printf "  ?   "
+--         Just ap -> do
+--           let acts = Set.map fst $ Set.filter (\(a,pa) -> pa > 0) ap
+--           printf "% 4s " (showActions acts)
+--     printf "\n"
 
 -- FIXME: remove recursion
 arbitraryState :: MonadRnd g m => GW t -> m Point

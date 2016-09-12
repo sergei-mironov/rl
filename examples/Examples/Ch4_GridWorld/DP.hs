@@ -1,69 +1,42 @@
 module Examples.Ch4_GridWorld.DP where
 
 import qualified Data.List as List
-import qualified Data.Map.Strict as Map
+import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Set as Set
 
-import RL.Types
 import RL.Imports
-import RL.DP
+import RL.DP as DP
 
 import Examples.Ch4_GridWorld.Rules as GW
 
-data DP_GW m num = DP_GW {
-    gw :: GW num
-  , gw_trace :: Point -> Action -> Q Point Action -> m ()
-  }
 
+instance (Fractional num, Ord num) => DP_Problem (GW num) Point Action num where
+  dp_states gw = GW.states gw
+  dp_actions gw s = GW.actions gw s
+  dp_transitions gw s a = Set.fromList [(GW.transition gw s a,1%1)]
+  dp_reward gw s a s' = -1
+  dp_terminal_states gw = gw_exits gw
 
-instance (Fractional num, Ord num) => DP_Problem (DP_GW m num) m (Int,Int) Action num where
-
-  dp_states p@(GW (sx,sy) _) = Set.fromList [(x,y) | x <- [0..sx-1], y <- [0..sy-1]]
-
-  dp_actions pr s =
-    case Set.member s (dp_terminal_states pr) of
-      True -> Set.empty
-      False -> Set.fromList [minBound..maxBound]
-
-  dp_transitions gw@(GW (sx,sy) _) s@(x,y) a =
-    Set.fromList [(GW.transition gw s a,1%1)]
-
-  dp_reward (GW (sx,sy) _) s a s' = -1
-
-  dp_terminal_states (GW _ exits) = exits
-
-
-instance (Fractional num, Ord num) => DP_Policy (GW num) GWRandomPolicy (Int,Int) Action num where
-
-  rlp_action GWRandomPolicy g s = (\x -> (x,1%(toInteger $ length a)))`Set.map`a
-    where
-      a = dp_actions g s
-
-showStateVal gw StateVal{..} = showGW gw (\p -> Map.lookup p v_map)
+-- showStateVal gw v = showGW gw (\p -> HashMap.lookup p v)
 
 -- | Evaluate random policy with DP method
-gw_eval_dp :: (Fractional num, Ord num, Real num) => GW num -> IO (StateVal num (Int,Int))
-gw_eval_dp gw =
+gw_evalRandom_dp :: (DP_Problem (GW num) Point Action num) => GW num -> IO (V Point num)
+gw_evalRandom_dp gw =
   let
-    opts = defaultOpts{eo_max_iter=300, eo_gamma = 1, eo_etha = 0.001}
-    p = GWRandomPolicy
+    opts = defaultOpts{eo_max_iter=300, eo_gamma=1, eo_etha = 0.001}
+    p0 = uniformPolicy gw
+    v0 = initV gw 0
   in do
-  v <- policy_eval gw p opts (zero_sate_values gw)
-  showStateVal gw v
-  p' <- policy_improve gw opts v
-  showGenericPolicy gw p'
-  return v
+  policy_eval opts p0 v0 (DP gw $ \a b -> return ())
 
 -- | Calculate Best policy, print its value function
-gw_iter_dp :: (Fractional num, Ord num, Real num) => GW num -> IO (StateVal num (Int,Int))
+gw_iter_dp :: (DP_Problem (GW num) Point Action num) => GW num -> IO (V Point num, P Point Action)
 gw_iter_dp gw =
   let
-    opts = defaultOpts{eo_max_iter=300, eo_gamma = 1, eo_etha = 0.001, eo_debug = const (return ())}
-    v0 = zero_sate_values gw
-    p0 = GWRandomPolicy
+    opts = defaultOpts{eo_max_iter=300, eo_gamma=1, eo_etha = 0.001}
+    p0 = uniformPolicy gw
+    v0 = initV gw 0
   in do
-  (v',p') <- policy_iteraton gw p0 v0 opts
-  showStateVal gw v'
-  return v'
+  policy_iteration opts p0 v0 (DP gw $ \a b -> return ())
 
 
