@@ -1,15 +1,3 @@
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE TemplateHaskell #-}
 module RL.DP where
 
 import qualified Data.List as List
@@ -43,8 +31,6 @@ class (Ord s, Ord a, Fractional num, Ord num, Hashable s) =>
   dp_reward :: pr -> s -> a -> s -> num
   -- FIXME: think about splitting terminal and non-terminal states
   dp_terminal_states :: pr -> Set s
-  -- dp_action :: pr -> P s a -> s -> Set (a,Probability)
-  -- dp_trace :: pr -> V s num -> P s a -> m ()
 
 action :: (DP_Problem pr s a num) => pr -> P s a -> s -> Set (a,Probability)
 action pr p s = p HashMap.! s

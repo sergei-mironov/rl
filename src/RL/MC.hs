@@ -1,99 +1,72 @@
-module RL.MC (
-    module RL.MC
-  , module RL.MC.Types
-  ) where
+{-# LANGUAGE DeriveFunctor #-}
+module RL.MC where
+
+import qualified Data.HashMap.Strict as HashMap
+import qualified Prelude
 
 import RL.Imports
-import qualified Data.List as List
-import qualified Data.Map.Strict as Map
-import qualified Data.Set as Set
-import Prelude hiding(break)
+import RL.Types
 
-import RL.Types as RL
-import RL.DP (DP_Problem(..))
-import qualified RL.DP as DP
+data MC_Opts = MC_Opts {
+    o_alpha :: MC_Number
+} deriving (Show)
 
-import RL.MC.Types
-
--- | Builds an episode which is a list of transitions, terminal transition is near head
-episode :: (MonadRnd g m , MC_Policy num pr s a p, MonadIO m, Show s, Show a)
-  => pr num -> s -> p -> m (Episode s a)
-episode pr s p = do
-  Episode . snd <$> do
-  flip execStateT (s,[]) $ do
-  loop $ do
-    s <- gets fst
-    a <- roll $ mc_action pr s p
-    (s', term) <- roll $ mc_transition pr s a
-    modify $ const s' *** ((s,a,s'):)
-    when term $ do
-      break ()
-
--- Backtrack rewards, first visit counts
-backtrack_fv :: (MC_Problem num pr s a) => pr num -> Episode s a -> Map s num
-backtrack_fv pr ep =
-  view _1 $ flip execState (Map.empty, 0) $ do
-    forM_ (episode_backward ep) $ \ (s,a,s') -> do
-      r <- pure $ mc_reward pr s a s'
-      _2 %= (+r)
-      g <- use _2
-      _1 %= (Map.insert s g)
-
-
-
-data EvalState num s = EvalState {
-    _es_v :: Map s (Avg num)
-  , _es_iter :: Integer
-  } deriving(Show)
-
-makeLenses ''EvalState
-
-initialEvalState :: (Ord s, Fractional num) => EvalState num s
-initialEvalState = EvalState mempty 0
-
--- | DIfference between state value estimates
--- FIXME: handle missing states case
-diffVal :: (Ord s, Fractional num) => StateVal num s -> (Map s (Avg num)) -> num
-diffVal (v_map -> tgt) src = sum $ Map.intersectionWith (\a b -> abs $ a - (current b)) tgt src
-
-
-data E_Ext num s = E_Ext {
-    eo_learnMonitor :: Maybe (Monitor num s)
-}
-
-type EvalOpts num s = Opts num (E_Ext num s)
-
-defaultEvalOpts :: (Fractional num) => EvalOpts num s
-defaultEvalOpts = defaultOpts E_Ext {
-    eo_learnMonitor = Nothing
+defaultOpts = MC_Opts {
+    o_alpha = 0.1
   }
 
+type MC_Number = Double
+type Q s a = M s a MC_Number
+type V s a = HashMap s (a, MC_Number)
 
--- Monte carlo policy evaluation, Figure 5.1. pg 109
-policy_eval :: (MC_Policy_Show num pr s a p, RandomGen g, MonadIO m, Real num)
-  => EvalOpts num s -> pr num -> p -> g -> m (StateVal num s, g)
-policy_eval Opts{..} pr p = do
-  runRndT $ do
-  StateVal . Map.map current . view es_v <$> do
-  flip execStateT initialEvalState $ do
-  loop $ do
-    i <- use es_iter
-    es_iter %= (+1)
-    when (i > o_max_iter-1) $ do
-      break ()
+emptyQ :: MC_Number -> Q s a
+emptyQ = initM
 
-    -- let rnd = lift . lift . liftRandT
-    ss <- roll $ mc_state_nonterm pr
-    es <- episode pr ss p
-    gs <- pure $ backtrack_fv pr es
+q2v :: (Bounded a, Enum a, Eq a, Hashable a, Eq s, Hashable s) => Q s a -> V s a
+q2v = foldMap_s (\(s,l) -> HashMap.singleton s (layer_s_max l))
 
-    forM_ (Map.toList gs) $ \(s,g) -> do
-      v <- fromMaybe initialAvg <$> uses es_v (Map.lookup s)
-      es_v %= Map.insert s (meld v g)
+-- FIXME: handle missing states case
+diffV :: (Eq s, Hashable s) => V s a -> V s a -> MC_Number
+diffV tgt src = sum (HashMap.intersectionWith (\a b -> abs ((snd a) - (snd b))) tgt src)
 
-    case eo_learnMonitor o_ext of
-      Nothing -> return ()
-      Just Monitor{..} -> do
-        v <- use es_v
-        pushData mon_data (fromInteger i) (diffVal mon_target v)
+class (Monad m, Fractional num, Ord s, Ord a, Show s, Show a, Bounded a, Enum a) =>
+    MC_Problem pr m s a num | pr->m, pr->s, pr->a, pr->num where
+  mc_is_terminal :: pr -> s -> Bool
+  mc_reward :: pr -> s -> a -> s -> num
+  mc_transition :: pr -> s -> a -> m s
+
+queryQ s = HashMap.toList <$> get_s s <$> get
+modifyQ pr s a f = modify (modify_s_a s a f)
+
+-- | Builds the reward map for an episode, counting only first visits.
+episode :: (Hashable s, Hashable a, MC_Problem pr m s a MC_Number)
+  => pr -> s -> Q s a -> m (HashMap (s,a) MC_Number)
+episode pr s0 q0 = do
+  {- episode -}
+  ep <- do
+    snd <$> do
+    flip evalStateT q0 $ do
+    loopM (s0,[]) (\(s,_) -> not $ mc_is_terminal pr s) $ \(s,ep) -> do
+      a <- fst . maximumBy (compare`on`snd) <$> queryQ s
+      s' <- lift $ mc_transition pr s a
+      return (s',(s,a,s'):ep)
+  {- revard map -}
+  rm <- do
+    fst <$> do
+    flip execStateT (mempty, 0) $ do
+    forM ep $ \(s,a,s') -> do
+      r <- pure $ mc_reward pr s a s'
+      modify $ \(m,g) -> (HashMap.insert (s,a) (g+r) m, g+r)
+  return rm
+
+-- | MC-ES learning algorithm, pg 5.4. Alpha-learing rate is used instead of
+-- total averaging
+mc_es_learn :: (Hashable s, Hashable a, MC_Problem pr m s a MC_Number)
+  => MC_Opts -> Q s a -> s -> pr -> m (Q s a)
+mc_es_learn MC_Opts{..} q0 s0 pr = do
+  rm <- episode pr s0 q0
+  flip execStateT q0 $ do
+    forM_ (HashMap.toList rm) $ \((s,a),g) -> do
+      modifyQ pr s a $ \q -> q + o_alpha*(g - q)
+
 

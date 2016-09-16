@@ -37,7 +37,7 @@ data S = S {
   }
 
 
-gw_iter_all :: GW TD_Number -> IO ()
+gw_iter_all :: GW Double -> IO ()
 gw_iter_all gw =
   let
     {- Number of iterations -}

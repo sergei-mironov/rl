@@ -8,7 +8,7 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 
 import RL.Imports
-import RL.TD.Types
+import RL.Types
 
 type Point = (Int,Int)
 
@@ -45,7 +45,7 @@ transition (CW (sx,sy)) (x,y) a =
 reward cw s a s' = if fall then -100 else -1 where
   (s'', fall) = transition cw s a
 
-showActionTable :: (MonadIO m) => CW -> [(Point,(Action, TD_Number))] -> m ()
+showActionTable :: (MonadIO m, Fractional num, Real num) => CW -> [(Point,(Action, num))] -> m ()
 showActionTable pr@(CW (sx,sy)) at = liftIO $ do
   forM_ [0..sy-1] $ \y -> do
     forM_ [0..sx-1] $ \x -> do

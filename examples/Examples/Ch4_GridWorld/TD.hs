@@ -10,7 +10,7 @@ import qualified Prelude
 
 import RL.Types hiding (Q, q2v)
 import RL.Imports
-import RL.TD.Types as TD
+import RL.Types as TD
 import RL.TD as TD
 import RL.DP as DP
 

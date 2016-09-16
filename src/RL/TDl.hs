@@ -7,8 +7,8 @@ import qualified Data.HashSet as HashSet
 
 import Control.Monad.Trans.Free.Church
 import RL.Imports
-import RL.TD.Types
-import RL.TD.Class (eps_greedy_action)
+import RL.Types
+import RL.Utils (eps_greedy_action)
 
 data TDl_Opts = TDl_Opts {
     o_alpha :: TD_Number
@@ -17,8 +17,9 @@ data TDl_Opts = TDl_Opts {
   , o_lambda :: TD_Number
   } deriving (Show)
 
-type Q s a = M s a
-type Z s a = M s a
+type TD_Number = Double
+type Q s a = M s a TD_Number
+type Z s a = M s a TD_Number
 type V s a = HashMap s (a, TD_Number)
 
 emptyQ :: TD_Number -> Q s a

@@ -4,7 +4,7 @@ import qualified Prelude
 import qualified Data.HashMap.Strict as HashMap
 
 import RL.Imports
-import RL.TD.Types as TD
+import RL.Types as TD
 import RL.TD as TD
 
 import Examples.Ch6_Cliff.Rules(CW(..), Point, Action)

@@ -1,124 +1,64 @@
-{-# LANGUAGE NondecreasingIndentation #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE Rank2Types #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE FunctionalDependencies #-}
 module RL.Types where
 
-import Control.Arrow ((&&&),(***))
-import Control.Monad
-import Control.Monad.Trans
-import Control.Monad.Random
-import Control.Monad.State.Strict
-import Data.Ratio
-import Data.List hiding (break)
-import qualified Data.List as List
-import Data.Map.Strict (Map, (!))
-import qualified Data.Map.Strict as Map
-import Data.Set (Set)
-import qualified Data.Set as Set
-import System.Random
+import qualified Data.HashMap.Strict as HashMap
+import qualified Data.HashSet as HashSet
 
 import RL.Imports
 
-{-
-debug :: (MonadIO m) => String -> m ()
-debug = liftIO . putStrLn
+type Layer a num = HashMap a num
+type Storage s a num = HashMap s (Layer a num)
 
-type Probability = Rational
-type Reward = Rational
-
-data StateVal num s = StateVal {
-    v_map :: Map s num
+-- | Base container used in most of RL algorithms. @M x0 sto@ describes the
+-- 2-dimentional array (`Storage` of `Layers`) where each layer containes fixed
+-- number of elements. New layers are filled with the range of
+-- @[minBound..maxBound]@ default values @x0@
+data M s a num = M {
+    x0 :: num
+  , sto :: Storage s a num
   } deriving(Show)
 
-data GenericPolicy s a = GenericPolicy {
-    _p_map :: Map s (Set (a,Probability))
-  } deriving(Eq,Ord, Show)
+-- | Initialises new container, set default layer value to @x@
+initM :: num -> M s a num
+initM x = M x HashMap.empty
 
-makeLenses ''GenericPolicy
+mmod :: (Storage s a num -> Storage s a num) -> M s a num -> M s a num
+mmod f m = m { sto = f (sto m) }
 
-emptyGenericPolicy :: (Ord s, Ord a) => GenericPolicy s a
-emptyGenericPolicy = GenericPolicy mempty
+aq0 :: (Eq a, Enum a, Hashable a, Bounded a)
+  => num -> HashMap a num
+aq0 q0 = HashMap.fromList [(a,q0) | a <- [minBound .. maxBound]]
 
-data Histogram a = Histogram {
-    hist_map :: Map a Integer
-  } deriving(Show)
+get_s :: (Eq a, Enum a, Hashable a, Bounded a, Eq s, Hashable s)
+  => s -> M s a num -> Layer a num
+get_s s (M x0 sto) = maybe (aq0 x0) (`HashMap.union` (aq0 x0)) . HashMap.lookup s $ sto
 
-showHist :: (Ord a) => Histogram a -> IO ()
-showHist Histogram{..} = do
-  let max = fromInteger $ maximum $ map snd $ Map.toAscList hist_map
-  forM_ (Map.toAscList hist_map`zip`[0..]) $ \((k,fromInteger -> v),i) -> do
-    putStrLn $ show i ++ " " ++ (replicate ((v * 50)`div`max) '#')
+layer_s_max :: (Eq a, Enum a, Hashable a, Bounded a, Ord num)
+  => Layer a num -> (a,num)
+layer_s_max = maximumBy (compare`on`snd) . HashMap.toList
 
-sample :: (Ord a) => Int -> (StdGen -> (a,StdGen)) -> Histogram a
-sample n f =
-  (Histogram . fst) $
-  flip runRand (mkStdGen 33) $ do
-  flip execStateT Map.empty $ do
-    replicateM_ n $ do
-      x <- lift $ liftRand f
-      modify $ Map.insertWith (+) x 1
+get_s_a :: (Eq a, Enum a, Hashable a, Bounded a, Eq s, Hashable s)
+  => s -> a -> M s a num -> num
+get_s_a s a (M x0 sto) = maybe x0 (maybe x0 id . HashMap.lookup a) . HashMap.lookup s $ sto
 
+put_s :: (Eq s, Hashable s, Bounded a, Enum a, Eq a, Hashable a)
+  => s -> HashMap a num -> M s a num -> M s a num
+put_s s x = mmod $ HashMap.unionWith HashMap.union (HashMap.singleton s x)
 
-data Avg num = Avg {
-    avg_curr :: num
-  , avg_n :: Integer
-  } deriving(Show, Read)
+put_s_a :: (Eq s, Hashable s, Bounded a, Enum a, Eq a, Hashable a)
+  => s -> a -> num -> M s a num -> M s a num
+put_s_a s a x = put_s s (HashMap.singleton a x)
 
-initialAvg :: (Fractional num) => Avg num
-initialAvg = Avg 0 0
+modify_s_a :: (Eq s, Hashable s, Bounded a, Enum a, Eq a, Hashable a)
+  => s -> a -> (num -> num) -> M s a num -> M s a num
+modify_s_a s a f q = put_s_a s a (f (get_s_a s a q)) q
 
-singletonAvg :: (Num num) => num -> Avg num
-singletonAvg x = Avg x 1
+list :: M s a num -> [(s,a,num)]
+list q = flip concatMap (HashMap.toList (sto q)) $ \(s,aq) -> flip map (HashMap.toList aq) $ \(a,q) -> (s,a,q)
 
-current :: (Fractional s) => Avg s -> s
-current (Avg c n) = c
+foldMap_s :: (Eq a, Bounded a, Enum a, Hashable a, Monoid acc) => ((s,Layer a num) -> acc) -> M s a num -> acc
+foldMap_s f (M x0 sto) = foldMap (f . (id *** (`HashMap.union`(aq0 x0)))) (HashMap.toList sto)
 
-meld :: forall s . (Fractional s) => Avg s -> s -> Avg s
-meld (Avg c n) s = Avg (c + (s-c)/(fromInteger (n+1))) (n + 1)
-
-combineAvg :: (Fractional num) => Avg num -> Avg num -> Avg num
-combineAvg a@(Avg v 1) b = meld b v
-combineAvg a b@(Avg v 1) = meld a v
-combineAvg _ _ = error "combineAvg: Only defined for singletons for now"
-
--- testAvg :: Double
-testAvg x = do
-  -- fromRational $ do
-  (current *** (\l -> sum l / (fromInteger $ toInteger $ length l))) $ do
-  fst $ flip runRand (mkStdGen 0) $ do
-  flip execStateT (initialAvg :: Avg Double, ([] :: [Double])) $ do
-  forM_ [0..x] $ \i -> do
-    -- r <- getRandomR (1,9)
-    modify $ (flip meld (fromInteger i)) *** (fromInteger i:)
-
-data Q num s a = Q {
-    _q_map :: Map s (Map a (Avg num))
-  } deriving(Show,Read)
-
-makeLenses ''Q
-
-sizeQ Q{..} = Map.size _q_map
-
-emptyQ :: (Ord s, Ord a) => Q num s a
-emptyQ = Q mempty
-
-q2v :: (Fractional num) => Q num s a -> StateVal num s
-q2v = StateVal . Map.map (sum . Map.map current) . view q_map
-
-
-data Monitor num s = Monitor {
-    mon_target :: StateVal num s
-  , mon_data :: PlotData
-  } deriving(Show)
-
-monitorNew :: (MonadIO m) => StateVal num s -> m (Monitor num s)
-monitorNew tgt = liftIO $
-  Monitor tgt <$> do
-    newData "MC"
-
--}
+fold_s :: (Eq a, Bounded a, Enum a, Hashable a, Monoid acc) => (acc -> (s,Layer a num) -> acc) -> acc -> M s a num -> acc
+fold_s f acc0 (M x0 sto) = foldl' go acc0 (HashMap.toList sto) where
+  go acc (s,l) = f acc (s,l`HashMap.union`(aq0 x0))
 

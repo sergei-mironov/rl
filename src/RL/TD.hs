@@ -1,15 +1,12 @@
 {-# LANGUAGE DeriveFunctor #-}
-module RL.TD (
-    module RL.TD
-  , module RL.TD.Types
-  ) where
+module RL.TD where
 
 import qualified Prelude
 import qualified Data.HashMap.Strict as HashMap
 
 import RL.Imports
-import RL.TD.Class (eps_greedy_action)
-import RL.TD.Types
+import RL.Types
+import RL.Utils (eps_greedy_action)
 
 data Q_Opts = Q_Opts {
     o_alpha :: TD_Number
@@ -23,7 +20,9 @@ defaultOpts = Q_Opts {
   , o_eps = 0.3
   }
 
-type Q s a = M s a
+type TD_Number = Double
+
+type Q s a = M s a TD_Number
 
 emptyQ :: TD_Number -> Q s a
 emptyQ = initM

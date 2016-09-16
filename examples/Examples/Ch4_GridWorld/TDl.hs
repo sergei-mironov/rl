@@ -8,7 +8,7 @@ import qualified Prelude
 import qualified Data.HashMap.Strict as HashMap
 
 import RL.Imports
-import RL.TD.Types
+import RL.Types
 import RL.TDl as TDl
 
 import Examples.Ch4_GridWorld.Rules (GW(..), Point, Action)
