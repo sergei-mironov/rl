@@ -15,7 +15,7 @@ import RL.TDl as TDl
 
 import Examples.Ch4_GridWorld.Rules as Rules
 import Examples.Ch4_GridWorld.DP as DP
--- import Examples.Ch4_GridWorld.MC as MC
+import Examples.Ch4_GridWorld.MC as MC
 import Examples.Ch4_GridWorld.TD as TD
 import Examples.Ch4_GridWorld.TDl as TDl
 
