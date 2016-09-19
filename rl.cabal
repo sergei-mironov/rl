@@ -12,26 +12,13 @@ library
   exposed-modules:
     RL.DP
     RL.MC
-    RL.MC.ES
-    RL.MC.Types
     RL.TD
-    RL.TD.Class
-    RL.TD.Types
     RL.TDl
     RL.Imports
     RL.Types
+    RL.Utils
     Graphics.TinyPlot
     Control.Monad.Rnd
-    Data.HashMap.Array
-    Data.HashMap.Base
-    Data.HashMap.Binary
-    Data.HashMap.Internal
-    Data.HashMap.Lazy
-    Data.HashMap.PopCount
-    Data.HashMap.Strict
-    Data.HashMap.Unsafe
-    Data.HashMap.UnsafeShift
-    Data.HashSet
 
   default-extensions:
     LambdaCase,
@@ -74,7 +61,8 @@ library
     hashable,
     binary,
     deepseq,
-    free
+    free,
+    unordered-containers
 
 executable example
   default-language: Haskell2010
@@ -82,7 +70,8 @@ executable example
   main-is:          Main.hs
   build-depends:    base >=4.8 && <4.9,
                     rl,
-                    containers
+                    containers,
+                    unordered-containers
 
   default-extensions:
     LambdaCase,
