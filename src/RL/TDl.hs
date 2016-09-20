@@ -28,11 +28,6 @@ emptyQ = initM
 toV :: (Bounded a, Enum a, Eq a, Hashable a, Eq s, Hashable s) => Q s a -> HashMap s TD_Number
 toV = foldMap_s (\(s,l) -> HashMap.singleton s (snd $ layer_s_max l))
 
--- FIXME: handle missing states case
--- diffV :: (Eq s, Hashable s) => V s a -> V s a -> TD_Number
--- diffV tgt src = sum (HashMap.intersectionWith (\a b -> abs ((snd a) - (snd b))) tgt src)
-
-
 data TDl_State s a = TDl_State {
     _tdl_q :: Q s a
   , _tdl_z :: Z s a
@@ -60,8 +55,6 @@ transition pr s a = get >>= lift . td_transition pr s a
 getQ s a = get_s_a s a <$> use tdl_q
 
 -- | TD(lambda) learning, aka Sarsa(lambda), pg 171
---
--- FIXME: The algorithm doesn't converge for unknown reason
 tdl_learn :: (MonadRnd g m, TDl_Problem pr m s a)
   => TDl_Opts -> Q s a -> s -> pr -> m (s, Q s a)
 tdl_learn TDl_Opts{..} q0 s0 pr = do
@@ -73,7 +66,6 @@ tdl_learn TDl_Opts{..} q0 s0 pr = do
       s' <- transition pr s a
       r <- pure $ td_reward pr s a s'
       (a',q') <- action pr s' o_eps
-      -- traceM (a',q')
       delta <- pure $ r + o_gamma * q' - q
       modifyZ pr s a (+1)
       listZ pr s a $ \(s,a,z) -> do
