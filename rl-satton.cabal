@@ -3,8 +3,10 @@ version:             0.1.0
 author:              Sergey Mironov
 maintainer:          grrwlf@gmail.com
 category:            Math
+license:             BSD3
 build-type:          Simple
 cabal-version:       >=1.10
+homepage:            https://github.com/grwlf/rl
 synopsis:            Collection of Reinforcement Learning algorithms
 description:
   rl-satton provides implementation of algorithms, described in the
