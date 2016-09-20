@@ -1,3 +1,9 @@
+{-|
+ - This module relies on older version of library and thus couldn't be
+ - compailed.
+ -
+ - FIXME: update the Gambler module
+ --}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE MultiParamTypeClasses #-}

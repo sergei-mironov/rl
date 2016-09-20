@@ -1,3 +1,7 @@
+{-|
+  Satton, 'Reinforcement Learning: The Introduction', pg.86, Example 4.1: GridWorld
+-}
+
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 module Examples.Ch4_GridWorld.Rules where
@@ -10,21 +14,15 @@ import RL.Types
 import RL.Imports
 import RL.DP
 
-{-
-  ____      _     _                    _     _
- / ___|_ __(_) __| |_      _____  _ __| | __| |
-| |  _| '__| |/ _` \ \ /\ / / _ \| '__| |/ _` |
-| |_| | |  | | (_| |\ V  V / (_) | |  | | (_| |
- \____|_|  |_|\__,_| \_/\_/ \___/|_|  |_|\__,_|
-
- Example 4.1, pg.86
--}
-
-
 type Point = (Int,Int)
 
 data Action = L | R | U | D
   deriving(Show, Eq, Ord, Enum, Bounded, Generic, Hashable)
+
+data GW num = GW {
+    gw_size :: (Int,Int),
+    gw_exits :: Set (Int,Int)
+  } deriving(Show)
 
 showAction :: Action -> String
 showAction a =
@@ -36,12 +34,6 @@ showAction a =
 
 showActions :: Set Action -> String
 showActions = concat . map showAction . List.sort . Set.toList
-
-data GW num = GW {
-    gw_size :: (Int,Int),
-    gw_exits :: Set (Int,Int)
-  }
-  deriving(Show)
 
 states ::  GW num -> Set Point
 states (GW (sx,sy) _) = Set.fromList [(x,y) | x <- [0..sx-1], y <- [0..sy-1]]
@@ -78,22 +70,7 @@ showV (GW (sx,sy) _) v = liftIO $ do
           printf "  ?   "
     printf "\n"
 
--- showGenericPolicy :: (MonadIO m, DP_Policy (GW num) (GenericPolicy Point Action) Point Action num)
---   => GW num
---   -> GenericPolicy Point Action
---   -> m ()
--- showGenericPolicy pr@(GW (sx,sy) _) p@GenericPolicy{..} = liftIO $ do
---   forM_ [0..sy-1] $ \y -> do
---     forM_ [0..sx-1] $ \x -> do
---       case Map.lookup (x,y) (view p_map p) of
---         Nothing ->  do
---           printf "  ?   "
---         Just ap -> do
---           let acts = Set.map fst $ Set.filter (\(a,pa) -> pa > 0) ap
---           printf "% 4s " (showActions acts)
---     printf "\n"
-
--- FIXME: remove recursion
+-- TODO: remove recursion
 arbitraryState :: MonadRnd g m => GW t -> m Point
 arbitraryState gw@GW{..} = do
     let (sx,sy) = gw_size
@@ -102,7 +79,6 @@ arbitraryState gw@GW{..} = do
     case isTerminal gw (x,y) of
       True -> arbitraryState gw
       False -> return (x,y)
-
 
 
 isTerminal :: GW num -> Point -> Bool

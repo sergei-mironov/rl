@@ -1,3 +1,7 @@
+{-|
+  Satton, 'Reinforcement Learning: The Introduction', pg.145, Example 6.6: Cliff Walking
+-}
+
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}

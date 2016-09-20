@@ -1,10 +1,16 @@
-name:                rl
-version:             0.1.0.0
+name:                rl-satton
+version:             0.1.0
 author:              Sergey Mironov
 maintainer:          grrwlf@gmail.com
 category:            Math
 build-type:          Simple
 cabal-version:       >=1.10
+synopsis:            Collection of Reinforcement Learning algorithms
+description:
+  rl-satton provides implementation of algorithms, described in the
+  'Reinforcement Learing: An Introduction' book by Richard S. Satton and Andrew
+  G. Barto. In particular, TD(0), TD(lambda), Q-learing are implemented.
+  Code readability was placed above performance.
 
 library
   default-language: Haskell2010
@@ -43,8 +49,6 @@ library
     containers,
     mtl,
     MonadRandom,
-    -- deprecate
-    -- break,
     transformers,
     monad-loops,
     lens,
@@ -69,9 +73,10 @@ executable example
   hs-source-dirs:   examples
   main-is:          Main.hs
   build-depends:    base >=4.8 && <4.9,
-                    rl,
+                    rl-satton,
                     containers,
-                    unordered-containers
+                    unordered-containers,
+                    mtl
 
   default-extensions:
     LambdaCase,

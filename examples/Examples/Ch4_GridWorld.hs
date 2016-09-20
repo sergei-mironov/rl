@@ -39,6 +39,8 @@ data S = S {
   }
 
 
+-- | Run 4 different learning algorithms on a simple GridWorld problem. Output
+-- learning progress to a gnuplot window
 gw_iter_all :: GW Double -> IO ()
 gw_iter_all gw =
   let

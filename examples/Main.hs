@@ -1,7 +1,6 @@
 module Main where
 
-import Examples.Ch6_Cliff
-
+import Examples.Ch4_GridWorld
 
 main = do
-  cw_iter_tdl cw
+  gw_iter_all gw_d

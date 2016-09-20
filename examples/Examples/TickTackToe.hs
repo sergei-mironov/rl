@@ -1,3 +1,9 @@
+{-|
+ - This module relies on older version of library and thus couldn't be
+ - compailed.
+ -
+ - FIXME: update the TickTackToe module
+ --}
 {-# LANGUAGE NondecreasingIndentation #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiWayIf #-}
