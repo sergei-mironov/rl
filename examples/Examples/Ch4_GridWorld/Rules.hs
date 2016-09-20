@@ -73,7 +73,7 @@ showV (GW (sx,sy) _) v = liftIO $ do
     forM_ [0..sx-1] $ \x -> do
       case List.lookup (x,y) v of
         Just v -> do
-          printf "%-2.1f " ((fromRational $ toRational v) :: Double)
+          printf "%-2.3f " ((fromRational $ toRational v) :: Double)
         Nothing -> do
           printf "  ?   "
     printf "\n"

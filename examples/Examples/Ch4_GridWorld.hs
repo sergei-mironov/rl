@@ -4,7 +4,7 @@ module Examples.Ch4_GridWorld (
 
 
 import qualified Data.List as List
-import qualified Data.Map.Strict as Map
+import qualified Data.HashMap.Strict as HashMap
 import qualified Data.Set as Set
 
 import RL.Types
@@ -12,6 +12,7 @@ import RL.Imports
 import RL.DP as DP
 import RL.TD as TD
 import RL.TDl as TDl
+import RL.MC as MC
 
 import Examples.Ch4_GridWorld.Rules as Rules
 import Examples.Ch4_GridWorld.DP as DP
@@ -34,6 +35,7 @@ data S = S {
   , st_q :: TD.Q Point Action
   , st_tdl :: TDl.Q Point Action
   , st_qlw :: TDl.Q Point Action
+  , st_mc :: MC.Q Point Action
   }
 
 
@@ -41,7 +43,7 @@ gw_iter_all :: GW Double -> IO ()
 gw_iter_all gw =
   let
     {- Number of iterations -}
-    cnt = 2000
+    cnt = 5000
     {- Epsilon-greedy policy -}
     eps = 0.01
     {- Learning rate -}
@@ -60,11 +62,18 @@ gw_iter_all gw =
          , o_lambda = 0.8
          }
 
+    omc = MC_Opts {
+          o_alpha = alpha
+        , o_maxlen = 200
+        , o_maxlen_reward = -1000
+        }
+
     oqlw = otdl
 
     q0 = TD.emptyQ 0
     tdl0 = TDl.emptyQ 0
     qlw0 = TDl.emptyQ 0
+    mc0 = MC.emptyQ 0
 
     g0 = pureMT 33
 
@@ -74,6 +83,7 @@ gw_iter_all gw =
   dq <- newData "q"
   dtdl <- newData "tdl"
   dqlw <- newData "qlw"
+  dmc <- newData "mc"
 
   withPlot "plot1" [heredoc|
     set grid back ls 102
@@ -83,15 +93,16 @@ gw_iter_all gw =
     done = 0
     bind all 'd' 'done = 1'
     while(!done) {
-      plot ${dat dq} using 1:2 with lines, ${dat dtdl} using 1:2 with lines, ${dat dqlw} using 1:2 with lines
+      plot ${dat dq} using 1:2 with lines, ${dat dtdl} using 1:2 with lines, ${dat dqlw} using 1:2 with lines, ${dat dmc} using 1:2 with lines
       pause 1
     }
     |] $ do
 
     flip evalRndT_ g0 $ do
-    flip execStateT (S 0 q0 tdl0 qlw0) $ do
+    flip execStateT (S 0 q0 tdl0 qlw0 mc0) $ do
     loop $ do
       s0 <- Rules.arbitraryState gw
+      a0 <- uniform [minBound..maxBound]
       s@S{..} <- get
 
       (_, q') <- do
@@ -103,10 +114,14 @@ gw_iter_all gw =
       (_, qlw') <- do
         qlw_learn oqlw st_qlw s0 $ TDl_GW gw $ \s a q -> return ()
 
+      (mc') <- do
+        mc_es_learn omc st_mc s0 a0 $ MC gw $ \s a -> return $ Rules.transition gw s a
+
       liftIO $ putStrLn $ "Loop i = " <> show st_i
       liftIO $ pushData dq (fromInteger st_i) (DP.diffV (TD.toV q') v_dp)
       liftIO $ pushData dtdl (fromInteger st_i) (DP.diffV (TD.toV tdl') v_dp)
       liftIO $ pushData dqlw (fromInteger st_i) (DP.diffV (TD.toV qlw') v_dp)
+      liftIO $ pushData dmc (fromInteger st_i) (DP.diffV (MC.toV mc') v_dp)
 
-      put s{st_i = st_i + 1, st_q = q' , st_tdl = tdl', st_qlw = qlw' }
+      put s{st_i = st_i + 1, st_q = q' , st_tdl = tdl', st_qlw = qlw', st_mc = mc' }
 

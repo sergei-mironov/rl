@@ -25,7 +25,7 @@ gw_iter_mc :: GW MC_Number -> IO ()
 gw_iter_mc gw =
   let
 
-    o = MC_Opts {
+    o = MC.defaultOpts {
       o_alpha = 0.1
     }
 
@@ -62,7 +62,7 @@ gw_iter_mc gw =
           mc_es_learn o q s0 a0 $ MC gw $ \s a -> do
             st_len %= (+1)
             l <- use st_len
-            when (l > 100) $ do
+            when (l > 200) $ do
               throwError $ "Episode is too long"
             return $ Rules.transition gw s a
 
@@ -76,6 +76,6 @@ gw_iter_mc gw =
           st_q %= const q'
 
         Left err -> do
-          -- liftIO $ putStrLn $ "Skipping episode due to error: " <> err
+          liftIO $ putStrLn $ "Skipping episode due to error: " <> err
           return ()
 
