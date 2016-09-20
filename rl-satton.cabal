@@ -1,5 +1,5 @@
 name:                rl-satton
-version:             0.1.0
+version:             0.1.1
 author:              Sergey Mironov
 maintainer:          grrwlf@gmail.com
 category:            Machine Learning
@@ -15,6 +15,8 @@ description:
   'Reinforcement Learing: An Introduction' book by Richard S. Satton and Andrew
   G. Barto. In particular, TD(0), TD(lambda), Q-learing are implemented.
   Code readability was placed above performance.
+
+  Usage examples are provided in the ./examples folder.
 
 library
   default-language: Haskell2010
@@ -49,7 +51,7 @@ library
     DeriveGeneric
 
   build-depends:
-    base >=4.8 && <4.9,
+    base >=4.8 && <5,
     containers,
     mtl,
     MonadRandom,
