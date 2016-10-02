@@ -5,7 +5,6 @@ import qualified Data.List as List
 import qualified Data.HashMap.Strict as HashMap
 import qualified Data.HashSet as HashSet
 
-import Control.Monad.Trans.Free.Church
 import RL.Imports
 import RL.Types
 import RL.Utils (eps_greedy_action)

@@ -8,9 +8,6 @@ module Control.Monad.Rnd where
 
 import Control.Monad.Identity
 import Control.Monad.State.Strict
-import Control.Monad.Free
-import Control.Monad.Trans.Free
-import Control.Monad.Trans.Free.Church as Church
 import Control.Break
 import System.Random
 -- import Imports
@@ -59,16 +56,6 @@ instance (MonadRnd g m) => MonadRnd g (StateT s m) where
   roll = lift . roll
 
 instance (MonadRnd g m) => MonadRnd g (Break r m) where
-  getGen = lift getGen
-  putGen = lift . putGen
-  roll = lift . roll
-
-instance (Functor f, MonadRnd g m) => MonadRnd g (FreeT f m) where
-  getGen = lift getGen
-  putGen = lift . putGen
-  roll = lift . roll
-
-instance (Functor f, MonadRnd g m) => MonadRnd g (FT f m) where
   getGen = lift getGen
   putGen = lift . putGen
   roll = lift . roll

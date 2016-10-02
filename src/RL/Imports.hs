@@ -10,13 +10,10 @@ module RL.Imports (
   , module Control.Monad.Rnd
   , module Control.Break
   , module Control.Lens
-  , module Control.Monad.Free.Class
-  , module Control.Monad.Free.TH
   , module Control.Monad.Loops
   , module Data.Bits
   , module Data.Ratio
   , module Data.Tuple
-  , module Data.Binary
   , module Data.List
   , module Data.Map.Strict
   , module Data.HashMap.Strict
@@ -53,8 +50,6 @@ import Control.Monad.State.Strict
 import Control.Monad.Rnd
 import Control.Break
 import Control.Lens (Lens', makeLenses, (%=), (^.), view, use, uses, zoom, _1, _2, _3, _4, _5, _6)
-import Control.Monad.Free.Class
-import Control.Monad.Free.TH (makeFree)
 import Control.Monad.Loops
 import Data.Bits
 import Data.Ratio
@@ -83,7 +78,6 @@ import Graphics.TinyPlot
 import Data.Text (Text)
 import Data.Monoid ((<>))
 import Data.Hashable
-import Data.Binary hiding(put,get)
 import GHC.Generics (Generic)
 
 
