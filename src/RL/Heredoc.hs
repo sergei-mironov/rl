@@ -1,7 +1,11 @@
+{- | Code was incorporated from `heredocs` pacakge, since the original package
+ - is broken at the moment.
+ -}
+
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-missing-fields #-}
-module Text.Heredoc ( heredoc
+module RL.Heredoc ( heredoc
                     , heredocFile
                     ) where
 

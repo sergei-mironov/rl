@@ -31,7 +31,7 @@ module RL.Imports (
   , module System.Random.Mersenne.Pure64
   , module System.Directory
   , module Text.Printf
-  , module Text.Heredoc
+  , module RL.Heredoc
   , module Text.Show.Pretty
   , module Graphics.TinyPlot
   , module RL.Imports
@@ -72,7 +72,7 @@ import System.Random
 import System.Random.Mersenne.Pure64
 import System.Directory
 import Text.Printf
-import Text.Heredoc
+import RL.Heredoc
 import Text.Show.Pretty
 import Graphics.TinyPlot
 import Data.Text (Text)

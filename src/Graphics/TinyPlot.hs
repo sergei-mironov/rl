@@ -13,7 +13,7 @@ import Data.Char
 import System.IO
 import System.Process
 import System.FilePath
-import Text.Heredoc
+import RL.Heredoc
 import Text.Printf
 
 data PlotData = PlotData {
