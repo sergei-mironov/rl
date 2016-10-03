@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 
 module RL.Imports (
     module Control.Arrow
@@ -8,9 +9,9 @@ module RL.Imports (
   , module Control.Monad.Trans
   , module Control.Monad.State.Strict
   , module Control.Monad.Rnd
-  , module Control.Break
   , module Control.Lens
   , module Control.Monad.Loops
+  , module Control.Break_RL
   , module Data.Bits
   , module Data.Ratio
   , module Data.Tuple
@@ -31,7 +32,7 @@ module RL.Imports (
   , module System.Random.Mersenne.Pure64
   , module System.Directory
   , module Text.Printf
-  , module RL.Heredoc
+  , module Text.Heredoc_RL
   , module Text.Show.Pretty
   , module Graphics.TinyPlot
   , module RL.Imports
@@ -48,9 +49,10 @@ import Control.Monad
 import Control.Monad.Trans
 import Control.Monad.State.Strict
 import Control.Monad.Rnd
-import Control.Break
 import Control.Lens (Lens', makeLenses, (%=), (^.), view, use, uses, zoom, _1, _2, _3, _4, _5, _6)
 import Control.Monad.Loops
+import Control.Break_RL
+import Control.Monad.Trans.Except (ExceptT, runExceptT, throwE)
 import Data.Bits
 import Data.Ratio
 import Data.Tuple
@@ -72,7 +74,7 @@ import System.Random
 import System.Random.Mersenne.Pure64
 import System.Directory
 import Text.Printf
-import RL.Heredoc
+import Text.Heredoc_RL
 import Text.Show.Pretty
 import Graphics.TinyPlot
 import Data.Text (Text)
@@ -91,4 +93,17 @@ trace' :: (Show a) => a -> b -> b
 trace' a b = trace (ppShow a) b
 
 loopM s0 f m = iterateUntilM (not . f) m s0
+
+
+iter  :: Monad m => r -> (r -> Break r m r) -> m r
+iter r0 f = do
+    x <- runExceptT (unBreak (f r0))
+    case x of
+        Left  r -> return r
+        Right r -> iter r f
+
+instance (MonadRnd g m) => MonadRnd g (Break r m) where
+  getGen = lift getGen
+  putGen = lift . putGen
+  roll = lift . roll
 

@@ -1,11 +1,13 @@
-{- | Code was incorporated from `heredocs` pacakge, since the original package
+{- | Code was copyed from `heredocs` pacakge, since the original package
  - is broken at the moment.
+ -
+ - See https://github.com/cutsea110/heredoc/issues/2
  -}
 
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-missing-fields #-}
-module RL.Heredoc ( heredoc
+module Text.Heredoc_RL ( heredoc
                     , heredocFile
                     ) where
 

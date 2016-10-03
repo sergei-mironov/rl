@@ -1,3 +1,7 @@
+{- This module was copyed from `break` package. Reason: original version doesn't
+ - export `unBreak`, thus forbids writing new combinators (such as `iter`) on
+ - its base. -}
+
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 {-| Example usage:
@@ -42,12 +46,11 @@ For some effects (like `Control.Monad.Trans.State`), you can omit `lift`:
 
 -}
 
-module Control.Break (
+module Control.Break_RL (
     -- * Break
-      Break
+      Break(..)
     , loop
     , break
-    , iter
 
     -- * Re-exports
     , lift
@@ -108,12 +111,4 @@ loop m = do
     case x of
         Left  r -> return r
         Right r -> return r
-
-iter  :: Monad m => r -> (r -> Break r m r) -> m r
-iter r0 f = do
-    x <- runExceptT (unBreak (f r0))
-    case x of
-        Left  r -> return r
-        Right r -> iter r f
-
 

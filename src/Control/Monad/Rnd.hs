@@ -8,9 +8,7 @@ module Control.Monad.Rnd where
 
 import Control.Monad.Identity
 import Control.Monad.State.Strict
-import Control.Break
 import System.Random
--- import Imports
 
 class (Monad m, RandomGen g) => MonadRnd g m | m -> g where
   roll :: (g -> (a,g)) -> m a
@@ -51,11 +49,6 @@ rollM mf = do
   return a
 
 instance (MonadRnd g m) => MonadRnd g (StateT s m) where
-  getGen = lift getGen
-  putGen = lift . putGen
-  roll = lift . roll
-
-instance (MonadRnd g m) => MonadRnd g (Break r m) where
   getGen = lift getGen
   putGen = lift . putGen
   roll = lift . roll

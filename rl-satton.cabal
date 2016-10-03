@@ -1,5 +1,5 @@
 name:                rl-satton
-version:             0.1.2.2
+version:             0.1.2.3
 author:              Sergey Mironov
 maintainer:          grrwlf@gmail.com
 category:            Machine Learning
@@ -31,7 +31,10 @@ library
     RL.Utils
     Graphics.TinyPlot
     Control.Monad.Rnd
-    RL.Heredoc
+
+  other-modules:
+    Control.Break_RL
+    Text.Heredoc_RL
 
   default-extensions:
     LambdaCase,
